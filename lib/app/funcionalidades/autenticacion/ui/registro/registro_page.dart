@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../tema/colores.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/registro_form.dart';
 
@@ -30,9 +31,6 @@ class _RegistroPageState extends State<RegistroPage> {
     final user = _userCtrl.text.trim();
     final email = _mailCtrl.text.trim();
 
-    // TODO: aquí conectas API real (service)
-    // await authService.enviarTokenRegistro(user, email);
-
     debugPrint('REGISTRO -> user: $user, email: $email');
 
     context.go('/token');
@@ -40,20 +38,75 @@ class _RegistroPageState extends State<RegistroPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+
     return AuthShell(
       backgroundAsset: 'assets/img/fondo.png',
+      overlayOpacity: 0.10, // mantiene el fondo con contraste como login
 
-      titulo: 'Regístrate en el sistema',
+      // ✅ Back arriba (tu AuthShell lo dibuja)
+      showBack: true,
+      onBack: () => context.go('/login'),
+      fallbackBackRoute: '/login',
+
+      // ✅ Copy más “cool”
+      titulo: 'Activa tu perfil',
       subtitulo:
-          'Activa tu perfil con tu número de servidor público y\nobtén acceso a tus recibos y trámites.',
-      primaryText: 'Ingresar',
+          'Usa tu número de servidor público y tu correo para recibir\nun código de verificación y continuar.',
+
+      // ✅ CTA con sentido (no “Ingresar”)
+      primaryText: 'Enviar código',
       onPrimary: _enviarToken,
-      onBack: () => context.pop(),
+
       child: RegistroForm(
         formKey: _formKey,
         userCtrl: _userCtrl,
         mailCtrl: _mailCtrl,
         onSubmit: _enviarToken,
+      ),
+
+      // ✅ Acción abajo: volver a login
+      footer: Column(
+        children: [
+          const SizedBox(height: 4),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '¿Ya tienes cuenta? ',
+                  style: t.bodySmall?.copyWith(
+                    color: ColoresApp.texto,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: InkWell(
+                    onTap: () => context.go('/login'),
+                    borderRadius: BorderRadius.circular(999),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Text(
+                        'Inicia sesión',
+                        style: t.bodySmall?.copyWith(
+                          color: ColoresApp.vino,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Al continuar aceptas el Aviso de Privacidad.',
+            textAlign: TextAlign.center,
+            style: t.bodySmall?.copyWith(color: ColoresApp.textoSuave),
+          ),
+        ],
       ),
     );
   }

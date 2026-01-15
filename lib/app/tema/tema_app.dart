@@ -9,22 +9,26 @@ class TemaApp {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: ColoresApp.blanco,
-      fontFamily: 'Poppins', 
+      fontFamily: 'Poppins', // ok
     );
 
+    // ✅ Asegura Poppins en TODO el TextTheme
+    final tt = base.textTheme.apply(fontFamily: 'Poppins');
+
     return base.copyWith(
-      textTheme: base.textTheme.copyWith(
-        titleLarge: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-        titleMedium: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
-        bodyMedium: const TextStyle(fontSize: 13, height: 1.35),
-        bodySmall: const TextStyle(fontSize: 11, height: 1.35),
-        labelMedium: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      textTheme: tt.copyWith(
+        titleLarge: tt.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700),
+        titleMedium: tt.titleMedium?.copyWith(fontSize: 14.5, fontWeight: FontWeight.w800),
+        bodyMedium: tt.bodyMedium?.copyWith(fontSize: 13, height: 1.35),
+        bodySmall: tt.bodySmall?.copyWith(fontSize: 11, height: 1.35),
+        labelMedium: tt.labelMedium?.copyWith(fontSize: 12, fontWeight: FontWeight.w600),
       ),
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: const Color(0xFFF3F3F3),
-        hintStyle: const TextStyle(color: Color(0xFF9A9A9A), fontSize: 12),
+        // ✅ hintStyle también debe heredar Poppins (si lo pones manual, ponlo con tt)
+        hintStyle: tt.bodySmall?.copyWith(color: const Color(0xFF9A9A9A), fontSize: 12),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -34,9 +38,10 @@ class TemaApp {
 
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF9A5A44), // café del mock
+          backgroundColor: const Color(0xFF9A5A44),
           foregroundColor: Colors.white,
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          // ✅ Igual aquí, evita const TextStyle que “borra” la fuente
+          textStyle: tt.labelLarge?.copyWith(fontWeight: FontWeight.w700, fontSize: 13),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           minimumSize: const Size(220, 40),
         ),
