@@ -32,12 +32,14 @@ class _LoginPageState extends State<LoginPage> {
     final pass = _passCtrl.text.trim();
 
     // TODO: aquí conectas API real (service)
-    // await authService.login(user, pass);
+    // final success = await authService.login(user, pass);
+    // if (!success) return;
 
     debugPrint('LOGIN -> user: $user, pass: $pass');
 
-    // TODO: si todo OK:
-    // context.go('/home');
+    // ✅ Si todo OK: ir a Home
+    if (!mounted) return;
+    context.go('/home');
   }
 
   @override
@@ -45,8 +47,8 @@ class _LoginPageState extends State<LoginPage> {
     final t = Theme.of(context).textTheme;
 
     return AuthShell(
-      // ✅ FONDO
       backgroundAsset: 'assets/img/fondo.png',
+      overlayOpacity: 0.10, // si quieres más contraste, súbelo a 0.14 - 0.18
 
       titulo: 'Bienvenido a tu espacio\ndigital',
       subtitulo:
@@ -92,6 +94,24 @@ class _LoginPageState extends State<LoginPage> {
               textAlign: TextAlign.center,
             ),
           ),
+          const SizedBox(height: 2),
+
+          // ✅ “Olvidé mi contraseña” (opcional pero recomendado)
+          TextButton(
+            onPressed: () => context.go('/recuperar'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              'Olvidé mi contraseña',
+              style: t.bodySmall?.copyWith(
+                color: ColoresApp.vino,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+
           const SizedBox(height: 2),
           Text(
             'Aviso de Privacidad',
