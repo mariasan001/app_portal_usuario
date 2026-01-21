@@ -1,12 +1,17 @@
 // lib/app/funcionalidades/home/ui/inicio_tab.dart
 
 import 'package:flutter/material.dart';
+
 import 'package:portal_servicios_usuario/app/funcionalidades/home/ui/widgets/noticiero_feed.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/home/ui/widgets/section_header.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/home/ui/widgets/enlaces_institucionales_section.dart';
 
 import '../data/noticiero_mock.dart';
 import '../domain/noticiero_post.dart';
 
+// ✅ enlaces institucionales (domain + mock)
+import '../domain/enlace_institucional.dart';
+import '../data/enlaces_institucionales_mock.dart';
 
 class InicioTab extends StatefulWidget {
   const InicioTab({super.key});
@@ -41,16 +46,31 @@ class _InicioTabState extends State<InicioTab> {
     );
   }
 
+  void _openEnlace(EnlaceInstitucional it) {
+    // ✅ placeholder: aquí luego metes url_launcher o webview
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Abrir: ${it.titulo}')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // ✅ tu lista de enlaces (mock)
+    final List<EnlaceInstitucional> enlaces = enlacesInstitucionalesMock;
+
     return ListView(
       padding: EdgeInsets.zero,
       children: [
         const SizedBox(height: 8),
 
-   SectionHeaderChip(title: 'Noticiero', chipText: 'Actualizado'),
+        // =========================
+        // NOTICIERO
+        // =========================
+        const SectionHeaderChip(
+          title: 'Noticiero',
+          chipText: 'Actualizado',
+        ),
 
-        // ✅ Carrusel horizontal
         NoticieroFeed(
           posts: _posts,
           onLike: _toggleLike,
@@ -61,7 +81,17 @@ class _InicioTabState extends State<InicioTab> {
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 18),
         ),
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
+
+        // =========================
+        // ENLACES INSTITUCIONALES
+        // =========================
+        EnlacesInstitucionalesSection(
+          items: enlaces,
+          onTap: _openEnlace,
+        ),
+
+        const SizedBox(height: 12),
       ],
     );
   }

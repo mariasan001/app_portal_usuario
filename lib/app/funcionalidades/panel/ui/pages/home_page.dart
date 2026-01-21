@@ -9,7 +9,6 @@ import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/ap
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_top_bar.dart';
 import 'package:portal_servicios_usuario/app/tema/colores.dart';
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -64,7 +63,9 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
+      // ✅ Tu InicioTab ahora mostrará el noticiero + enlaces institucionales
       const InicioTab(),
+
       const _PlaceholderTab(title: 'Servicios (placeholder)'),
       const _PlaceholderTab(title: 'Mis trámites (placeholder)'),
       const _PlaceholderTab(title: 'Recibos (placeholder)'),
@@ -75,7 +76,9 @@ class _HomePageState extends State<HomePage> {
       body: SafeArea(
         child: Column(
           children: [
-            AppTopBar(
+            const AppTopBar(
+              // ✅ te recomiendo que AppTopBar internamente formatee:
+              // "Hola," delgado y "Sagma" más pesado, sin duplicar texto.
               nombre: 'Hola, Sagma 👋',
               hintSearch: 'Buscar servicio, trámite o recibo...',
             ),
