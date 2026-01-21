@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_bottom_nav.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_more_sheet.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_top_bar.dart';
 import 'package:portal_servicios_usuario/app/tema/colores.dart';
-
 
 class AppShell extends StatelessWidget {
   final Widget child;
@@ -13,9 +13,8 @@ class AppShell extends StatelessWidget {
   int _indexFromLocation(String location) {
     if (location.startsWith('/home')) return 0;
     if (location.startsWith('/servicios')) return 1;
-    if (location.startsWith('/citas')) return 2;
+    if (location.startsWith('/tramites')) return 2;
     if (location.startsWith('/recibos')) return 3;
-    // “Más” no es ruta
     return 0;
   }
 
@@ -28,12 +27,62 @@ class AppShell extends StatelessWidget {
         context.go('/servicios');
         break;
       case 2:
-        context.go('/citas');
+        context.go('/tramites');
         break;
       case 3:
         context.go('/recibos');
         break;
     }
+  }
+
+  void _openMoreSheet(BuildContext context) {
+    final base = Theme.of(context);
+
+    // ✅ Mata el “tinte” Material3 SOLO en el bottom sheet
+    final sheetTheme = base.copyWith(
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: ColoresApp.blanco,
+        modalBackgroundColor: ColoresApp.blanco,
+        surfaceTintColor: Colors.transparent, // ✅ adiós rosita
+        showDragHandle: true, // ✅ dejamos solo el del sistema (1 raya)
+      ),
+      colorScheme: base.colorScheme.copyWith(
+        surface: ColoresApp.blanco,
+        surfaceTint: Colors.transparent,
+      ),
+    );
+
+    showModalBottomSheet(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+
+      // ✅ Dejamos el handle del sistema (1 raya) y quitamos el tuyo
+      showDragHandle: true,
+
+      // ✅ Scrim más oscuro = menos “mezcla rosita” con tu fondo crema
+      barrierColor: Colors.black.withValues(alpha: 0.40),
+
+      backgroundColor: ColoresApp.blanco,
+      clipBehavior: Clip.antiAlias,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+
+      builder: (ctx) => Theme(
+        data: sheetTheme,
+        child: AppMoreSheet(
+          showCustomHandle: false, // ✅ importante: no dibujar tu handle
+          onPerfil: () => Navigator.pop(ctx),
+          onConfig: () => Navigator.pop(ctx),
+          onAyuda: () => Navigator.pop(ctx),
+          onLogout: () {
+            Navigator.pop(ctx);
+            context.go('/login');
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -46,54 +95,21 @@ class AppShell extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // ✅ Top bar estilo “app moderna”
             const AppTopBar(
-              nombre: 'Sagma', // luego lo haces dinámico
+              nombre: 'Sagma',
               hintSearch: 'Buscar en tu portal...',
             ),
-
-            // ✅ Contenido
             Expanded(child: child),
           ],
         ),
       ),
-
-      // ✅ Bottom nav fijo
       bottomNavigationBar: AppBottomNav(
         currentIndex: currentIndex,
         onTap: (i) {
           if (i == 4) {
-            // Más
-            showModalBottomSheet(
-              context: context,
-              useSafeArea: true,
-              showDragHandle: true,
-              backgroundColor: ColoresApp.blanco,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-              ),
-              builder: (_) => AppMoreSheet(
-                onPerfil: () {
-                  Navigator.pop(context);
-                  // context.go('/perfil');
-                },
-                onConfig: () {
-                  Navigator.pop(context);
-                  // context.go('/config');
-                },
-                onAyuda: () {
-                  Navigator.pop(context);
-                  // context.go('/ayuda');
-                },
-                onLogout: () {
-                  Navigator.pop(context);
-                  context.go('/login'); // luego aquí limpias sesión real
-                },
-              ),
-            );
+            _openMoreSheet(context);
             return;
           }
-
           _goByIndex(context, i);
         },
       ),
