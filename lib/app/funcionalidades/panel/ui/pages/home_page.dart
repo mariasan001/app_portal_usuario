@@ -1,9 +1,12 @@
+// lib/app/funcionalidades/home/ui/home_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/home/ui/inicio_tab.dart';
+
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_bottom_nav.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_more_sheet.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_top_bar.dart';
-
 import 'package:portal_servicios_usuario/app/tema/colores.dart';
 
 
@@ -21,39 +24,32 @@ class _HomePageState extends State<HomePage> {
   void _openMoreSheet() {
     showModalBottomSheet(
       context: context,
-      showDragHandle: true,
       useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return AppMoreSheet(
-          onPerfil: () {
-            Navigator.pop(context);
-            // TODO: navegar a perfil
-            // context.go('/perfil');
-          },
-          onConfig: () {
-            Navigator.pop(context);
-            // TODO: navegar a configuración
-            // context.go('/config');
-          },
-          onAyuda: () {
-            Navigator.pop(context);
-            // TODO: navegar a ayuda
-            // context.go('/ayuda');
-          },
-          onLogout: () {
-            Navigator.pop(context);
-            context.go('/login');
-          },
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.25),
+      builder: (ctx) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+          child: Material(
+            color: ColoresApp.blanco,
+            child: AppMoreSheet(
+              onPerfil: () => Navigator.pop(ctx),
+              onConfig: () => Navigator.pop(ctx),
+              onAyuda: () => Navigator.pop(ctx),
+              onLogout: () {
+                Navigator.pop(ctx);
+                context.go('/login');
+              },
+            ),
+          ),
         );
       },
     );
   }
 
   void _onTapNav(int i) {
-    // 0..3 son tabs reales
     if (i <= 3) {
       setState(() {
         _index = i;
@@ -61,19 +57,17 @@ class _HomePageState extends State<HomePage> {
       });
       return;
     }
-
-    // 4 = “Más”
-    setState(() => _index = _lastIndex); // se queda en el tab actual
+    setState(() => _index = _lastIndex);
     _openMoreSheet();
   }
 
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      _PlaceholderTab(title: 'Inicio (placeholder)'),
-      _PlaceholderTab(title: 'Servicios (placeholder)'),
-      _PlaceholderTab(title: 'Citas (placeholder)'),
-      _PlaceholderTab(title: 'Recibos (placeholder)'),
+      const InicioTab(),
+      const _PlaceholderTab(title: 'Servicios (placeholder)'),
+      const _PlaceholderTab(title: 'Mis trámites (placeholder)'),
+      const _PlaceholderTab(title: 'Recibos (placeholder)'),
     ];
 
     return Scaffold(
@@ -82,10 +76,9 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           children: [
             AppTopBar(
-              nombre: 'Hola, Sagma 👋', // luego lo haces dinámico
+              nombre: 'Hola, Sagma 👋',
               hintSearch: 'Buscar servicio, trámite o recibo...',
             ),
-
             Expanded(
               child: IndexedStack(
                 index: _index,
@@ -95,7 +88,6 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-
       bottomNavigationBar: AppBottomNav(
         currentIndex: _index,
         onTap: _onTapNav,
