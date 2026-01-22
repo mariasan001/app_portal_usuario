@@ -38,6 +38,10 @@ class _ServicioProcesoPageState extends State<ServicioProcesoPage> {
   // Ajusta si tu app usa otra ruta principal como fallback.
   static const String _fallbackRoute = '/servicios';
 
+  // ✅ Mock de disponibilidad (estable por sesión)
+  final Map<String, _SeatStatus> _dayStatusCache = {};
+  final Map<String, _SeatStatus> _timeStatusCache = {};
+
   final _servidor = const ServidorPublicoMock(
     nombreCompleto: 'María Fernanda López Ramírez',
     numeroEmpleado: 'SP-104928',
@@ -104,7 +108,6 @@ class _ServicioProcesoPageState extends State<ServicioProcesoPage> {
     }
 
     // 3) Último recurso: manda a una ruta “home/listado”
-    // (Evita pantalla negra si esta pantalla quedó como root)
     if (mounted) context.go(_fallbackRoute);
   }
 
@@ -180,48 +183,98 @@ class _ServicioProcesoPageState extends State<ServicioProcesoPage> {
     return _docsOk ? 2 : 1;
   }
 
-  Future<void> _pickFecha() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
+  // ✅ NUEVO: selector “asientos” para cita (día + hora)
+  Future<void> _pickCita({required Color accent}) async {
+    final result = await showModalBottomSheet<_CitaSeleccion>(
       context: context,
-      initialDate: _fechaCita ?? now.add(const Duration(days: 1)),
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 90)),
-      helpText: 'Selecciona el día de tu cita',
-      builder: (ctx, child) {
-        return Theme(
-          data: Theme.of(ctx).copyWith(
-            colorScheme: Theme.of(ctx).colorScheme.copyWith(
-                  primary: ColoresApp.cafe,
-                  surface: ColoresApp.blanco,
-                ),
-          ),
-          child: child!,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: ColoresApp.blanco,
+      barrierColor: Colors.black.withOpacity(0.40),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return _CitaSelectorSheet(
+          accent: accent,
+          initialDate: _fechaCita,
+          initialTime: _horaCita,
+          dayStatusOf: _mockDayStatus,
+          timeStatusOf: _mockTimeStatus,
         );
       },
     );
-    if (picked != null) setState(() => _fechaCita = picked);
+
+    if (result == null) return;
+
+    setState(() {
+      _fechaCita = result.fecha;
+      _horaCita = result.hora;
+    });
   }
 
-  Future<void> _pickHora() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _horaCita ?? const TimeOfDay(hour: 10, minute: 0),
-      helpText: 'Selecciona la hora',
-      builder: (ctx, child) {
-        return Theme(
-          data: Theme.of(ctx).copyWith(
-            colorScheme: Theme.of(ctx).colorScheme.copyWith(
-                  primary: ColoresApp.cafe,
-                  surface: ColoresApp.blanco,
-                ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) setState(() => _horaCita = picked);
+  // ---------------------------
+  // Mock de disponibilidad (para integrar backend luego)
+  // ---------------------------
+
+  _SeatStatus _mockDayStatus(DateTime d) {
+    final key = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    // Bloqueado: sábado/domingo (lo que pediste)
+    if (d.weekday == DateTime.saturday || d.weekday == DateTime.sunday) return _SeatStatus.blocked;
+
+    // No permitimos hoy hacia atrás
+    final today = DateTime.now();
+    final onlyDateToday = DateTime(today.year, today.month, today.day);
+    final onlyDateD = DateTime(d.year, d.month, d.day);
+    if (onlyDateD.isBefore(onlyDateToday)) return _SeatStatus.blocked;
+
+    // Cache estable
+    if (_dayStatusCache.containsKey(key)) return _dayStatusCache[key]!;
+
+    // Simulación: algunos días ocupados
+    final h = _hash(key);
+    final status = (h % 7 == 0) ? _SeatStatus.occupied : _SeatStatus.available;
+    _dayStatusCache[key] = status;
+    return status;
   }
+
+  _SeatStatus _mockTimeStatus(DateTime d, TimeOfDay t) {
+    final key = '${d.year}-${d.month}-${d.day}-${t.hour}:${t.minute.toString().padLeft(2, '0')}';
+
+    // Si el día está bloqueado/ocupado, todas las horas heredan (simple)
+    final dayStatus = _mockDayStatus(d);
+    if (dayStatus == _SeatStatus.blocked) return _SeatStatus.blocked;
+    if (dayStatus == _SeatStatus.occupied) {
+      // podrías permitir algunas horas aunque el día “ocupado”
+      // pero por UX, si el día dice ocupado, que se sienta ocupado 😄
+      return _SeatStatus.occupied;
+    }
+
+    if (_timeStatusCache.containsKey(key)) return _timeStatusCache[key]!;
+
+    // Simulación: ciertas horas ocupadas
+    final h = _hash(key);
+    final status = (h % 5 == 0) ? _SeatStatus.occupied : _SeatStatus.available;
+    _timeStatusCache[key] = status;
+    return status;
+  }
+
+  int _hash(String s) {
+    // hash simple y estable
+    var x = 0;
+    for (final c in s.codeUnits) {
+      x = 0x1fffffff & (x + c);
+      x = 0x1fffffff & (x + ((0x0007ffff & x) << 10));
+      x ^= (x >> 6);
+    }
+    x = 0x1fffffff & (x + ((0x03ffffff & x) << 3));
+    x ^= (x >> 11);
+    x = 0x1fffffff & (x + ((0x00003fff & x) << 15));
+    return x.abs();
+  }
+
+  // ---------------------------
 
   String _genFolio({required String prefix}) {
     final r = Random();
@@ -241,10 +294,12 @@ class _ServicioProcesoPageState extends State<ServicioProcesoPage> {
     );
   }
 
+  // ✅ FIX: BottomSheet sin overflow (scroll + altura máxima + SafeArea)
   Future<String?> _pickAttachOption(DocReq doc) async {
     return showModalBottomSheet<String>(
       context: context,
       useSafeArea: true,
+      isScrollControlled: true,
       backgroundColor: ColoresApp.blanco,
       barrierColor: Colors.black.withOpacity(0.40),
       shape: const RoundedRectangleBorder(
@@ -252,70 +307,78 @@ class _ServicioProcesoPageState extends State<ServicioProcesoPage> {
       ),
       builder: (ctx) {
         final t = Theme.of(ctx).textTheme;
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: ColoresApp.bordeSuave,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Row(
+        final maxH = MediaQuery.of(ctx).size.height * 0.80;
+
+        return SafeArea(
+          top: false,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxH),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
+                  Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: ColoresApp.bordeSuave,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Adjuntar documento',
+                          style: t.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: ColoresApp.texto,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
                     child: Text(
-                      'Adjuntar documento',
-                      style: t.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: ColoresApp.texto,
+                      doc.label,
+                      style: t.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: ColoresApp.textoSuave,
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    icon: const Icon(Icons.close_rounded),
+                  const SizedBox(height: 10),
+                  SheetOption(
+                    icon: Icons.photo_camera_outlined,
+                    title: 'Tomar foto (simulado)',
+                    subtitle: 'Ideal si es un documento físico',
+                    onTap: () => Navigator.pop(ctx, 'foto_${doc.id}.jpg'),
+                  ),
+                  const SizedBox(height: 10),
+                  SheetOption(
+                    icon: Icons.upload_file_outlined,
+                    title: 'Elegir archivo (simulado)',
+                    subtitle: 'PDF o imagen desde tu dispositivo',
+                    onTap: () => Navigator.pop(ctx, 'archivo_${doc.id}.pdf'),
+                  ),
+                  const SizedBox(height: 10),
+                  SheetOption(
+                    icon: Icons.delete_outline_rounded,
+                    title: 'Quitar adjunto',
+                    subtitle: 'Dejar este requisito pendiente',
+                    danger: true,
+                    onTap: () => Navigator.pop(ctx, '__remove__'),
                   ),
                 ],
               ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  doc.label,
-                  style: t.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: ColoresApp.textoSuave,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SheetOption(
-                icon: Icons.photo_camera_outlined,
-                title: 'Tomar foto (simulado)',
-                subtitle: 'Ideal si es un documento físico',
-                onTap: () => Navigator.pop(ctx, 'foto_${doc.id}.jpg'),
-              ),
-              const SizedBox(height: 10),
-              SheetOption(
-                icon: Icons.upload_file_outlined,
-                title: 'Elegir archivo (simulado)',
-                subtitle: 'PDF o imagen desde tu dispositivo',
-                onTap: () => Navigator.pop(ctx, 'archivo_${doc.id}.pdf'),
-              ),
-              const SizedBox(height: 10),
-              SheetOption(
-                icon: Icons.delete_outline_rounded,
-                title: 'Quitar adjunto',
-                subtitle: 'Dejar este requisito pendiente',
-                danger: true,
-                onTap: () => Navigator.pop(ctx, '__remove__'),
-              ),
-            ],
+            ),
           ),
         );
       },
@@ -621,7 +684,6 @@ class _ServicioProcesoPageState extends State<ServicioProcesoPage> {
             currentIndex: _uiCurrentStepIndex(),
           ),
           const SizedBox(height: 12),
-
           SectionCard(
             title: 'Datos del servidor público',
             accent: it.accent,
@@ -638,7 +700,6 @@ class _ServicioProcesoPageState extends State<ServicioProcesoPage> {
               ],
             ),
           ),
-
           const SizedBox(height: 12),
 
           if (_isPresencial) ...[
@@ -649,19 +710,20 @@ class _ServicioProcesoPageState extends State<ServicioProcesoPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ✅ Ahora ambos abren el selector tipo “asientos”
                   PickRow(
                     label: 'Día',
                     value: _fechaCita == null ? 'Seleccionar' : _fmtFecha(context, _fechaCita!),
-                    onTap: _pickFecha,
+                    onTap: () => _pickCita(accent: it.accent),
                   ),
                   const SizedBox(height: 10),
                   PickRow(
                     label: 'Hora',
                     value: _horaCita == null ? 'Seleccionar' : _fmtHora(context, _horaCita!),
-                    onTap: _pickHora,
+                    onTap: () => _pickCita(accent: it.accent),
                   ),
                   const SizedBox(height: 12),
-                  const HintBox(text: 'Llega 10 minutos antes. (Sí, aunque el sistema diga “rápido” 😄)'),
+                  const HintBox(text: 'Tip: sábado y domingo están bloqueados. El sistema también “guarda lugares” 😄'),
                 ],
               ),
             ),
@@ -752,6 +814,568 @@ class _ServicioProcesoPageState extends State<ServicioProcesoPage> {
 
           const SizedBox(height: 80),
         ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+//  Selector de cita “tipo asientos” (BottomSheet)
+// ============================================================================
+
+enum _SeatStatus { available, occupied, blocked }
+
+typedef _DayStatusOf = _SeatStatus Function(DateTime day);
+typedef _TimeStatusOf = _SeatStatus Function(DateTime day, TimeOfDay time);
+
+class _CitaSeleccion {
+  const _CitaSeleccion({required this.fecha, required this.hora});
+  final DateTime fecha;
+  final TimeOfDay hora;
+}
+
+class _CitaSelectorSheet extends StatefulWidget {
+  const _CitaSelectorSheet({
+    required this.accent,
+    required this.dayStatusOf,
+    required this.timeStatusOf,
+    this.initialDate,
+    this.initialTime,
+  });
+
+  final Color accent;
+  final DateTime? initialDate;
+  final TimeOfDay? initialTime;
+
+  final _DayStatusOf dayStatusOf;
+  final _TimeStatusOf timeStatusOf;
+
+  @override
+  State<_CitaSelectorSheet> createState() => _CitaSelectorSheetState();
+}
+
+class _CitaSelectorSheetState extends State<_CitaSelectorSheet> {
+  DateTime? _selectedDay;
+  TimeOfDay? _selectedTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDay = widget.initialDate;
+    _selectedTime = widget.initialTime;
+  }
+
+  List<DateTime> _buildDays() {
+    final now = DateTime.now();
+    // arrancamos en mañana para “agendar”
+    final start = DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+    // 21 días visibles como tu ejemplo
+    return List.generate(21, (i) => start.add(Duration(days: i)));
+  }
+
+  List<TimeOfDay> _buildTimes() {
+    // Horario tipo oficina: 09:00 a 15:00 cada 30 min
+    final list = <TimeOfDay>[];
+    for (int h = 9; h <= 15; h++) {
+      list.add(TimeOfDay(hour: h, minute: 0));
+      if (h != 15) list.add(TimeOfDay(hour: h, minute: 30));
+    }
+    return list;
+  }
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  String _weekdayShortEs(DateTime d) {
+    // 1=Lun ... 7=Dom
+    const names = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
+    return names[(d.weekday - 1).clamp(0, 6)];
+  }
+
+  String _two(int n) => n.toString().padLeft(2, '0');
+
+  Color _dotColor(_SeatStatus s) {
+    switch (s) {
+      case _SeatStatus.available:
+        return ColoresApp.texto.withOpacity(0.65);
+      case _SeatStatus.occupied:
+        return ColoresApp.textoSuave.withOpacity(0.55);
+      case _SeatStatus.blocked:
+        return ColoresApp.bordeSuave;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final days = _buildDays();
+    final times = _buildTimes();
+    final maxH = MediaQuery.of(context).size.height * 0.88;
+
+    final canConfirm = _selectedDay != null &&
+        _selectedTime != null &&
+        widget.dayStatusOf(_selectedDay!) == _SeatStatus.available &&
+        widget.timeStatusOf(_selectedDay!, _selectedTime!) == _SeatStatus.available;
+
+    return SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxH),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: widget.accent.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: widget.accent.withOpacity(0.22)),
+                    ),
+                    child: Icon(Icons.event_available_outlined, color: widget.accent),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Selecciona tu cita',
+                          style: t.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: ColoresApp.texto,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Día y hora (tipo asientos)',
+                          style: t.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: ColoresApp.textoSuave,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+
+            // Legend
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: Wrap(
+                spacing: 14,
+                runSpacing: 8,
+                children: [
+                  _LegendItem(dot: _dotColor(_SeatStatus.available), label: 'Disponible'),
+                  _LegendItem(dot: _dotColor(_SeatStatus.occupied), label: 'Ocupado'),
+                  _LegendItem(dot: _dotColor(_SeatStatus.blocked), label: 'Bloqueado'),
+                  _LegendItem(dot: widget.accent, label: 'Seleccionado'),
+                ],
+              ),
+            ),
+
+            // Body scroll
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Elige un día',
+                      style: t.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: ColoresApp.texto,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Grid 7 columnas
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 7,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: 0.82,
+                      ),
+                      itemCount: days.length,
+                      itemBuilder: (ctx, i) {
+                        final d = days[i];
+                        final status = widget.dayStatusOf(d);
+                        final isSelected = _selectedDay != null && _sameDay(_selectedDay!, d);
+
+                        return _DaySeatTile(
+                          accent: widget.accent,
+                          weekday: _weekdayShortEs(d),
+                          dayNum: _two(d.day),
+                          status: status,
+                          selected: isSelected,
+                          onTap: status == _SeatStatus.available
+                              ? () {
+                                  setState(() {
+                                    _selectedDay = d;
+                                    // si ya había hora, revalidamos
+                                    if (_selectedTime != null) {
+                                      final ts = widget.timeStatusOf(d, _selectedTime!);
+                                      if (ts != _SeatStatus.available) _selectedTime = null;
+                                    }
+                                  });
+                                }
+                              : null,
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+                    Text(
+                      'Elige una hora',
+                      style: t.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: ColoresApp.texto,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    if (_selectedDay == null)
+                      const HintBox(text: 'Primero selecciona un día para ver horarios.')
+                    else
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          for (final tm in times)
+                            Builder(builder: (ctx) {
+                              final status = widget.timeStatusOf(_selectedDay!, tm);
+                              final isSelected = _selectedTime != null &&
+                                  _selectedTime!.hour == tm.hour &&
+                                  _selectedTime!.minute == tm.minute;
+
+                              return _TimeSeatTile(
+                                accent: widget.accent,
+                                time: tm,
+                                status: status,
+                                selected: isSelected,
+                                onTap: status == _SeatStatus.available
+                                    ? () => setState(() => _selectedTime = tm)
+                                    : null,
+                              );
+                            }),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Footer buttons
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              decoration: BoxDecoration(
+                color: ColoresApp.blanco,
+                border: Border(top: BorderSide(color: ColoresApp.bordeSuave.withOpacity(0.9))),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: BtnSecondary(
+                      text: 'Cancelar',
+                      onTap: () => Navigator.pop(context),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: BtnPrimary(
+                      text: 'Confirmar',
+                      accent: widget.accent,
+                      enabled: canConfirm,
+                      onTap: () {
+                        if (!canConfirm) return;
+                        Navigator.pop(
+                          context,
+                          _CitaSeleccion(
+                            fecha: _selectedDay!,
+                            hora: _selectedTime!,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LegendItem extends StatelessWidget {
+  const _LegendItem({required this.dot, required this.label});
+  final Color dot;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: t.bodySmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: ColoresApp.textoSuave,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DaySeatTile extends StatelessWidget {
+  const _DaySeatTile({
+    required this.accent,
+    required this.weekday,
+    required this.dayNum,
+    required this.status,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Color accent;
+  final String weekday;
+  final String dayNum;
+  final _SeatStatus status;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+
+    final blocked = status == _SeatStatus.blocked;
+    final occupied = status == _SeatStatus.occupied;
+
+    final fg = selected
+        ? ColoresApp.blanco
+        : blocked
+            ? ColoresApp.textoSuave.withOpacity(0.55)
+            : occupied
+                ? ColoresApp.textoSuave
+                : ColoresApp.texto;
+
+    final bg = selected
+        ? accent
+        : blocked
+            ? ColoresApp.inputBg
+            : occupied
+                ? ColoresApp.inputBg
+                : ColoresApp.blanco;
+
+    final bd = selected
+        ? accent
+        : blocked
+            ? ColoresApp.bordeSuave
+            : occupied
+                ? ColoresApp.bordeSuave
+                : ColoresApp.bordeSuave;
+
+    Color badgeColor() {
+      if (selected) return accent;
+      switch (status) {
+        case _SeatStatus.available:
+          return ColoresApp.texto.withOpacity(0.55);
+        case _SeatStatus.occupied:
+          return ColoresApp.textoSuave.withOpacity(0.55);
+        case _SeatStatus.blocked:
+          return ColoresApp.bordeSuave;
+      }
+    }
+
+    return LayoutBuilder(
+      builder: (ctx, c) {
+        // 👇 Si la celda está chaparrita, entramos a modo “compacto”
+        final compact = c.maxHeight < 68;
+
+        final pV = compact ? 4.0 : 8.0; // antes 10, aquí ya no mata espacio
+        final gap = compact ? 2.0 : 6.0;
+
+        final weekdayStyle = t.bodySmall?.copyWith(
+          fontWeight: FontWeight.w900,
+          color: fg,
+          height: 1.0,
+          fontSize: compact ? 9 : 7,
+        );
+
+        final dayStyle = t.titleSmall?.copyWith(
+          fontWeight: FontWeight.w900,
+          color: fg,
+          height: 1.0,
+          fontSize: compact ? 10 : 12,
+        );
+
+        return Opacity(
+          opacity: blocked ? 0.70 : 1,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              padding: EdgeInsets.symmetric(vertical: pV, horizontal: 6),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: bd),
+              ),
+              child: Stack(
+                children: [
+                  // Centro: solo los textos (sin iconos que empujen hacia abajo)
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          weekday,
+                          maxLines: 1,
+                          overflow: TextOverflow.clip,
+                          softWrap: false,
+                          style: weekdayStyle,
+                        ),
+                        SizedBox(height: gap),
+                        Text(
+                          dayNum,
+                          maxLines: 1,
+                          overflow: TextOverflow.clip,
+                          softWrap: false,
+                          style: dayStyle,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Badge esquina (estado)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: badgeColor(),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+
+                  // Si está bloqueado u ocupado, agregamos un mini ícono PERO sin romper layout
+                  if (!compact && (blocked || occupied))
+                    Positioned(
+                      bottom: 6,
+                      right: 6,
+                      child: Icon(
+                        blocked ? Icons.block_rounded : Icons.do_not_disturb_on_rounded,
+                        size: 16,
+                        color: fg,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+
+class _TimeSeatTile extends StatelessWidget {
+  const _TimeSeatTile({
+    required this.accent,
+    required this.time,
+    required this.status,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Color accent;
+  final TimeOfDay time;
+  final _SeatStatus status;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  String _fmt(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+
+    final blocked = status == _SeatStatus.blocked;
+    final occupied = status == _SeatStatus.occupied;
+
+    final fg = selected
+        ? ColoresApp.blanco
+        : blocked
+            ? ColoresApp.textoSuave.withOpacity(0.55)
+            : occupied
+                ? ColoresApp.textoSuave
+                : ColoresApp.texto;
+
+    final bg = selected ? accent : ColoresApp.blanco;
+    final bd = selected ? accent : ColoresApp.bordeSuave;
+
+    return Opacity(
+      opacity: (blocked || occupied) ? 0.60 : 1,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: bd),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _fmt(time),
+                style: t.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: fg,
+                ),
+              ),
+              if (occupied) ...[
+                const SizedBox(width: 8),
+                Icon(Icons.do_not_disturb_on_rounded, size: 18, color: fg),
+              ],
+              if (blocked) ...[
+                const SizedBox(width: 8),
+                Icon(Icons.block_rounded, size: 18, color: fg),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
