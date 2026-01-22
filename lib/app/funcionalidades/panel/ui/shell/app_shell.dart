@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_bottom_nav.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_more_sheet.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_top_bar.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/servicios/ui/widgets/servicios_search_sheet.dart';
 import 'package:portal_servicios_usuario/app/tema/colores.dart';
 
 class AppShell extends StatelessWidget {
@@ -38,13 +40,11 @@ class AppShell extends StatelessWidget {
   void _openMoreSheet(BuildContext context) {
     final base = Theme.of(context);
 
-    // ✅ Mata el “tinte” Material3 SOLO en el bottom sheet
     final sheetTheme = base.copyWith(
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: ColoresApp.blanco,
         modalBackgroundColor: ColoresApp.blanco,
-        surfaceTintColor: Colors.transparent, // ✅ adiós rosita
-        showDragHandle: true, // ✅ dejamos solo el del sistema (1 raya)
+        surfaceTintColor: Colors.transparent,
       ),
       colorScheme: base.colorScheme.copyWith(
         surface: ColoresApp.blanco,
@@ -56,23 +56,17 @@ class AppShell extends StatelessWidget {
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
-
-      // ✅ Dejamos el handle del sistema (1 raya) y quitamos el tuyo
       showDragHandle: true,
-
-      // ✅ Scrim más oscuro = menos “mezcla rosita” con tu fondo crema
-      barrierColor: Colors.black.withValues(alpha: 0.40),
-
+      barrierColor: Colors.black.withOpacity(0.40),
       backgroundColor: ColoresApp.blanco,
       clipBehavior: Clip.antiAlias,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
-
       builder: (ctx) => Theme(
         data: sheetTheme,
         child: AppMoreSheet(
-          showCustomHandle: false, // ✅ importante: no dibujar tu handle
+          showCustomHandle: false,
           onPerfil: () => Navigator.pop(ctx),
           onConfig: () => Navigator.pop(ctx),
           onAyuda: () => Navigator.pop(ctx),
@@ -85,19 +79,75 @@ class AppShell extends StatelessWidget {
     );
   }
 
+  // ✅ Abre buscador contextual SOLO para Servicios
+  void _openServiciosSearch(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.40),
+      builder: (_) {
+        return ServiciosSearchSheet(
+          onOpen: (item) {
+            Navigator.pop(context);
+
+            final r = (item.route ?? '').trim();
+            if (r.isNotEmpty) {
+              context.go(r);
+              return;
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Abrir: ${item.titulo}')),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = GoRouterState.of(context).uri.toString();
     final currentIndex = _indexFromLocation(loc);
+
+    final inServicios = loc.startsWith('/servicios');
+
+    // ✅ Hint dinámico por sección (fino y útil)
+    final hintSearch = inServicios ? 'Buscar trámites y consultas…' : 'Buscar en tu portal…';
+
+    // ✅ Trailing dinámico: en servicios mostramos “filtros”
+    final trailing = inServicios
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                PhosphorIcons.slidersHorizontal(PhosphorIconsStyle.light),
+                size: 18,
+                color: ColoresApp.textoSuave.withOpacity(0.85),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                PhosphorIcons.caretRight(PhosphorIconsStyle.light),
+                size: 18,
+                color: ColoresApp.textoSuave.withOpacity(0.6),
+              ),
+            ],
+          )
+        : null;
 
     return Scaffold(
       backgroundColor: ColoresApp.blanco,
       body: SafeArea(
         child: Column(
           children: [
-            const AppTopBar(
-              nombre: 'Sagma',
-              hintSearch: 'Buscar en tu portal...',
+            // ❗️ya NO puede ser const
+            AppTopBar(
+              nombre: 'Hola,Sagma 👋',
+              hintSearch: hintSearch,
+              onTapBuscar: inServicios ? () => _openServiciosSearch(context) : null,
+              searchTrailing: trailing,
+              // onTapPerfil / onTapNotificaciones los conectas luego si quieres
             ),
             Expanded(child: child),
           ],

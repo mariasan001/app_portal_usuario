@@ -10,6 +10,13 @@ class AppTopBar extends StatelessWidget {
   final VoidCallback? onTapNotificaciones;
   final VoidCallback? onTapBuscar;
 
+  /// ✅ Por si algún día necesitas ocultar el buscador en una pantalla específica.
+  final bool showSearch;
+
+  /// ✅ Personaliza el trailing del SearchPill (por ejemplo, filtros en Servicios).
+  /// Si no lo mandas, usa el caretRight.
+  final Widget? searchTrailing;
+
   const AppTopBar({
     super.key,
     required this.nombre,
@@ -17,6 +24,8 @@ class AppTopBar extends StatelessWidget {
     this.onTapPerfil,
     this.onTapNotificaciones,
     this.onTapBuscar,
+    this.showSearch = true,
+    this.searchTrailing,
   });
 
   @override
@@ -55,11 +64,11 @@ class AppTopBar extends StatelessWidget {
 
                 Expanded(
                   child: Text(
-                    nombre, // ✅ solo nombre, grande
+                    nombre,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: t.titleLarge?.copyWith(
-                      fontSize: 18, // 🔥 más grande
+                      fontSize: 18,
                       fontWeight: FontWeight.w900,
                       color: ColoresApp.texto,
                       letterSpacing: 0.2,
@@ -89,13 +98,16 @@ class AppTopBar extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 10),
+            if (showSearch) ...[
+              const SizedBox(height: 10),
 
-            // ===== Search pill (sin QR) =====
-            _SearchPill(
-              hint: hintSearch,
-              onTap: onTapBuscar,
-            ),
+              // ===== Search pill =====
+              _SearchPill(
+                hint: hintSearch,
+                onTap: onTapBuscar,
+                trailing: searchTrailing,
+              ),
+            ],
           ],
         ),
       ),
@@ -106,10 +118,12 @@ class AppTopBar extends StatelessWidget {
 class _SearchPill extends StatelessWidget {
   final String hint;
   final VoidCallback? onTap;
+  final Widget? trailing;
 
   const _SearchPill({
     required this.hint,
     this.onTap,
+    this.trailing,
   });
 
   @override
@@ -117,7 +131,7 @@ class _SearchPill extends StatelessWidget {
     final t = Theme.of(context).textTheme;
 
     return Material(
-      color: ColoresApp.inputBg, // ✅ gris súper clarito
+      color: ColoresApp.inputBg,
       surfaceTintColor: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
@@ -152,13 +166,12 @@ class _SearchPill extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // detalle visual minimal (flecha) para que “se entienda” que abre búsqueda
-              Icon(
-                PhosphorIcons.caretRight(PhosphorIconsStyle.light),
-                size: 18,
-                color: ColoresApp.textoSuave.withOpacity(0.6),
-              ),
+              trailing ??
+                  Icon(
+                    PhosphorIcons.caretRight(PhosphorIconsStyle.light),
+                    size: 18,
+                    color: ColoresApp.textoSuave.withOpacity(0.6),
+                  ),
             ],
           ),
         ),
