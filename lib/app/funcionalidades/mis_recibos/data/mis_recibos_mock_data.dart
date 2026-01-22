@@ -7,40 +7,85 @@ import '../domain/mis_recibos_models.dart';
 class MisRecibosMockData {
   static final _rnd = Random(11);
 
-  static List<ReciboResumen> buildRecibos() {
-    final now = DateTime.now();
-    final years = [now.year, now.year - 1, now.year - 2];
+  // ⬇️ pega esto dentro de MisRecibosMockData, reemplazando buildRecibos()
 
-    final list = <ReciboResumen>[];
+static List<ReciboResumen> buildRecibos({int total = 80}) {
+  final now = DateTime.now();
+  final prox = buildProximaNomina();
 
-    for (final y in years) {
-      // 24 quincenas (mock típico)
-      for (int q = 1; q <= 24; q++) {
-        // fecha “publicación” aproximada: cada 15 días
-        final base = DateTime(y, 1, 1).add(Duration(days: (q - 1) * 15));
-        final disponibleAt = DateTime(base.year, base.month, min(base.day + 10, 28), 10, 30);
+  // empezamos “antes” de la próxima
+  int anio = prox.anio;
+  int qna = prox.quincena;
 
-        final neto = 8000 + _rnd.nextInt(9000) + _rnd.nextDouble();
-        final estado = DateTime.now().isAfter(disponibleAt) ? ReciboEstado.disponible : ReciboEstado.pendiente;
+  final out = <ReciboResumen>[];
 
-        list.add(
-          ReciboResumen(
-            id: 'recibo_${y}_q${q.toString().padLeft(2, '0')}',
-            anio: y,
-            quincena: q,
-            periodoLabel: 'Qna ${q.toString().padLeft(2, '0')} · $y',
-            disponibleAt: disponibleAt,
-            neto: neto,
-            estado: estado,
-          ),
-        );
-      }
+  for (int i = 0; i < total; i++) {
+    // prev periodo
+    if (qna > 1) {
+      qna -= 1;
+    } else {
+      anio -= 1;
+      qna = 24;
     }
 
-    // Ordena más recientes primero
-    list.sort((a, b) => b.disponibleAt.compareTo(a.disponibleAt));
-    return list;
+    final id = '$anio-${qna.toString().padLeft(2, '0')}';
+    final label = _periodoLabel(anio, qna);
+
+    final disponibleAt = _disponibleAt(anio, qna);
+
+    // Si tu enum se llama distinto, ajusta aquí:
+    final estado = now.isAfter(disponibleAt)
+        ? ReciboEstado.disponible
+        : ReciboEstado.pendiente;
+
+    out.add(
+      ReciboResumen(
+        id: id,
+        anio: anio,
+        quincena: qna,
+        periodoLabel: label,
+        disponibleAt: disponibleAt,
+        neto: _netoMock(anio, qna),
+        estado: estado,
+        tieneReporte: false,
+      ),
+    );
   }
+
+  // orden desc por seguridad
+  out.sort((a, b) => ((b.anio * 100) + b.quincena).compareTo((a.anio * 100) + a.quincena));
+  return out;
+}
+
+// ---------- helpers privados (si ya existen en tu archivo, NO dupliques) ----------
+static double _netoMock(int anio, int qna) {
+  // mock estable por periodo (no random loco cada hot reload)
+  final key = (anio * 100) + qna;
+  final base = 11800.0 + (qna * 73.25);
+  final wiggle = (key % 17) * 19.3;
+  return base + wiggle;
+}
+
+static int _mesDesdeQuincena(int qna) => ((qna - 1) ~/ 2) + 1;
+
+static DateTime _disponibleAt(int anio, int qna) {
+  final mes = _mesDesdeQuincena(qna);
+  if (qna.isOdd) {
+    // 1ra quincena -> 16 del mes
+    return DateTime(anio, mes, 16, 9, 0);
+  } else {
+    // 2da quincena -> último día del mes
+    final lastDay = DateTime(anio, mes + 1, 0).day;
+    return DateTime(anio, mes, lastDay, 9, 0);
+  }
+}
+
+static String _periodoLabel(int anio, int qna) {
+  const m = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  final mes = _mesDesdeQuincena(qna).clamp(1, 12);
+  return '${m[mes - 1]} $anio · Qna ${qna.toString().padLeft(2, '0')}';
+}
+
 
   static ReciboDetalle buildDetalle(ReciboResumen r) {
     // Mock de conceptos

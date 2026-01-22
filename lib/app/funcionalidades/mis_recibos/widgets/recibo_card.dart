@@ -19,7 +19,7 @@ class ReciboCard extends StatelessWidget {
   });
 
   final ReciboResumen item;
-  final Color accent;
+  final Color accent; // en tu page viene ColoresApp.cafe
 
   final VoidCallback onOpen;
   final VoidCallback onDownload;
@@ -33,12 +33,19 @@ class ReciboCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
 
+    // 🎨 roles de color (más variedad, menos “todo café”)
+    final primary = accent; // Café (acción principal)
+    final doc = ColoresApp.dorado; // Documento / highlight
+    final danger = ColoresApp.vino; // Reporte / alerta
+    final softBg = ColoresApp.fondoCrema.withOpacity(0.35);
+
+    // Estado (solo una vez)
     final estadoPill = item.disponible
         ? UiPill(
             text: 'Disponible',
-            fg: accent,
-            bg: accent.withOpacity(0.10),
-            bd: accent.withOpacity(0.22),
+            fg: doc,
+            bg: doc.withOpacity(0.10),
+            bd: doc.withOpacity(0.22),
             icon: PhosphorIconsRegular.checkCircle,
           )
         : UiPill(
@@ -49,11 +56,21 @@ class ReciboCard extends StatelessWidget {
             icon: PhosphorIconsRegular.clock,
           );
 
+    final reportePill = item.tieneReporte
+        ? UiPill(
+            text: 'Reporte enviado',
+            fg: danger,
+            bg: danger.withOpacity(0.10),
+            bd: danger.withOpacity(0.22),
+            icon: PhosphorIconsRegular.warningCircle,
+          )
+        : null;
+
     return InkWell(
       borderRadius: BorderRadius.circular(18),
       onTap: batchMode ? onToggleSelect : onOpen,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.fromLTRB(13, 11, 13, 11),
         decoration: BoxDecoration(
           color: ColoresApp.blanco,
           borderRadius: BorderRadius.circular(18),
@@ -62,29 +79,43 @@ class ReciboCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ---------- Header ----------
             Row(
               children: [
+                // Icono documento (dorado)
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: accent.withOpacity(0.10),
+                    color: doc.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: accent.withOpacity(0.22)),
+                    border: Border.all(color: doc.withOpacity(0.22)),
                   ),
-                  child: Icon(PhosphorIconsRegular.filePdf, color: accent, size: 18),
+                  child: Icon(
+                    PhosphorIconsRegular.filePdf,
+                    color: doc,
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 10),
+
+                // Título (un pelín más chico)
                 Expanded(
                   child: Text(
                     item.periodoLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: t.titleSmall?.copyWith(
                       fontWeight: FontWeight.w900,
                       color: ColoresApp.texto,
+                      fontSize: 14.5,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
+
+                // Batch check OR estado
                 if (batchMode)
                   InkWell(
                     borderRadius: BorderRadius.circular(999),
@@ -93,12 +124,18 @@ class ReciboCard extends StatelessWidget {
                       width: 22,
                       height: 22,
                       decoration: BoxDecoration(
-                        color: selected ? accent : ColoresApp.blanco,
+                        color: selected ? primary : ColoresApp.blanco,
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: selected ? accent : ColoresApp.bordeSuave),
+                        border: Border.all(
+                          color: selected ? primary : ColoresApp.bordeSuave,
+                        ),
                       ),
                       child: selected
-                          ? Icon(PhosphorIconsFill.check, size: 14, color: ColoresApp.blanco)
+                          ? Icon(
+                              PhosphorIconsFill.check,
+                              size: 14,
+                              color: ColoresApp.blanco,
+                            )
                           : null,
                     ),
                   )
@@ -107,93 +144,111 @@ class ReciboCard extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 10),
+            // Reporte pill (si aplica)
+            if (!batchMode && reportePill != null) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [reportePill],
+              ),
+            ],
 
-            Row(
-              children: [
-                Icon(PhosphorIconsRegular.money, size: 18, color: ColoresApp.textoSuave),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Neto: ${money(item.neto)}',
-                    style: t.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: ColoresApp.texto,
+            const SizedBox(height: 12),
+
+            // ---------- Neto (card suave con crema) ----------
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: ColoresApp.bordeSuave),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    PhosphorIconsRegular.money,
+                    size: 18,
+                    color: ColoresApp.textoSuave,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Neto',
+                      style: t.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: ColoresApp.textoSuave,
+                        fontSize: 12.5,
+                      ),
                     ),
                   ),
-                ),
-                if (!batchMode) estadoPill,
-              ],
-            ),
-
-            const SizedBox(height: 10),
-
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                UiPill(
-                  text: 'Año ${item.anio}',
-                  fg: ColoresApp.textoSuave,
-                  bg: ColoresApp.inputBg,
-                  bd: ColoresApp.bordeSuave,
-                  icon: PhosphorIconsRegular.calendar,
-                ),
-                UiPill(
-                  text: 'Qna ${fmt2(item.quincena)}',
-                  fg: ColoresApp.textoSuave,
-                  bg: ColoresApp.inputBg,
-                  bd: ColoresApp.bordeSuave,
-                  icon: PhosphorIconsRegular.numberCircleOne,
-                ),
-                if (item.tieneReporte)
-                  UiPill(
-                    text: 'Reporte enviado',
-                    fg: ColoresApp.vino,
-                    bg: ColoresApp.vino.withOpacity(0.10),
-                    bd: ColoresApp.vino.withOpacity(0.22),
-                    icon: PhosphorIconsRegular.warningCircle,
+                  Text(
+                    money(item.neto),
+                    style: t.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: ColoresApp.texto,
+                      fontSize: 14.5,
+                      letterSpacing: -0.2,
+                    ),
                   ),
-              ],
+                ],
+              ),
             ),
 
+            // ---------- Actions (compactas) ----------
             if (!batchMode) ...[
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
                       onPressed: onReport,
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: ColoresApp.bordeSuave),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      icon: Icon(
+                        PhosphorIconsRegular.flag,
+                        size: 18,
+                        color: danger,
                       ),
-                      child: Text(
+                      label: Text(
                         'Reportar',
-                        style: t.titleSmall?.copyWith(
+                        style: t.bodySmall?.copyWith(
                           fontWeight: FontWeight.w900,
-                          color: ColoresApp.texto,
+                          color: danger,
+                          fontSize: 12.8,
                         ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: danger.withOpacity(0.28)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        backgroundColor: ColoresApp.blanco,
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       onPressed: item.disponible ? onDownload : null,
-                      style: ElevatedButton.styleFrom(
-                        elevation: 0,
-                        backgroundColor: item.disponible ? accent : ColoresApp.bordeSuave,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      icon: Icon(
+                        PhosphorIconsRegular.downloadSimple,
+                        size: 18,
+                        color: ColoresApp.blanco,
                       ),
-                      child: Text(
+                      label: Text(
                         'Descargar',
-                        style: t.titleSmall?.copyWith(
+                        style: t.bodySmall?.copyWith(
                           fontWeight: FontWeight.w900,
                           color: ColoresApp.blanco,
+                          fontSize: 12.8,
                         ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        elevation: 0,
+                        backgroundColor: item.disponible ? primary : ColoresApp.bordeSuave,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 9),
                       ),
                     ),
                   ),

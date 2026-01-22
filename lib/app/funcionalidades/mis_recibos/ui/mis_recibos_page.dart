@@ -6,7 +6,6 @@ import '../data/mis_recibos_repository_mock.dart';
 import '../domain/mis_recibos_models.dart';
 import '../widgets/mis_recibos_ui.dart';
 import '../widgets/recibo_card.dart';
-import '../widgets/recibo_filters_bar.dart';
 import '../widgets/recibo_report_sheet.dart';
 import 'recibo_detalle_page.dart';
 
@@ -20,59 +19,37 @@ class MisRecibosPage extends StatefulWidget {
 class _MisRecibosPageState extends State<MisRecibosPage> {
   final repo = MisRecibosRepositoryMock.instance;
 
-  late ReciboFilters _filters;
   bool _batchMode = false;
   final Set<String> _selected = <String>{};
 
   late Future<_VM> _future;
 
-  // ✅ Para “brincar” directo a Resultados cuando cambias filtros
-  final ScrollController _scrollCtrl = ScrollController();
-  final GlobalKey _resultsKey = GlobalKey();
-
   @override
   void initState() {
     super.initState();
-    final y = DateTime.now().year;
-    _filters = ReciboFilters(anio: y);
     _future = _load();
-  }
-
-  @override
-  void dispose() {
-    _scrollCtrl.dispose();
-    super.dispose();
   }
 
   Future<_VM> _load() async {
     final p = await repo.proximaNomina();
-    final ult = await repo.ultimas(limit: 5);
-    final list = await repo.listar(anio: _filters.anio, quincena: _filters.quincena);
-    return _VM(proxima: p, ultimas: ult, filtradas: list);
+
+    // Pedimos más para filtrar bien "anteriores a la próxima"
+    final raw = await repo.ultimas(limit: 24);
+
+    final proxKey = periodoKey(p.anio, p.quincena);
+
+    final anteriores = raw
+        .where((r) => periodoKey(r.anio, r.quincena) < proxKey)
+        .toList()
+      ..sort((a, b) => comparePeriodoDesc(a.anio, a.quincena, b.anio, b.quincena));
+
+    final ult5 = anteriores.take(5).toList();
+
+    return _VM(proxima: p, ultimas: ult5);
   }
 
   Future<void> _reload() async {
     setState(() => _future = _load());
-  }
-
-  void _scrollToResults() {
-    final ctx = _resultsKey.currentContext;
-    if (ctx == null) return;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ✅ asegura que Resultados se vea sin andar buscando con el dedo
-      Scrollable.ensureVisible(
-        ctx,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-        alignment: 0.06, // un poquito abajo del top
-      );
-    });
-  }
-
-  bool get _hasActiveFilters {
-    final currentYear = DateTime.now().year;
-    return _filters.anio != currentYear || _filters.quincena != null;
   }
 
   @override
@@ -80,39 +57,60 @@ class _MisRecibosPageState extends State<MisRecibosPage> {
     final t = Theme.of(context).textTheme;
     final accent = ColoresApp.cafe;
 
-    final years = List<int>.generate(6, (i) => DateTime.now().year - i);
-
     return Scaffold(
       backgroundColor: ColoresApp.blanco,
-      appBar: AppBar(
-        backgroundColor: ColoresApp.blanco,
-        elevation: 0,
-        title: Text(
-          'Recibos de nómina',
-          style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900, color: ColoresApp.texto),
+appBar: AppBar(
+  backgroundColor: ColoresApp.blanco,
+  elevation: 0,
+  centerTitle: false,
+  titleSpacing: 16,
+  title: Row(
+    children: [
+      Container(
+        width: 3,
+        height: 16,
+        decoration: BoxDecoration(
+          color: ColoresApp.cafe,
+          borderRadius: BorderRadius.circular(999),
         ),
-        actions: [
-          IconButton(
-            tooltip: _batchMode ? 'Salir de lote' : 'Modo lote',
-            onPressed: () {
-              setState(() {
-                _batchMode = !_batchMode;
-                _selected.clear();
-              });
-            },
-            icon: Icon(
-              _batchMode ? PhosphorIconsRegular.x : PhosphorIconsRegular.stack,
-              color: ColoresApp.texto,
-            ),
-          ),
-        ],
       ),
+      const SizedBox(width: 8),
+      Text(
+        'Recibos de nómina',
+        style: t.titleMedium?.copyWith(
+          fontWeight: FontWeight.w900,
+          color: ColoresApp.texto,
+          fontSize: 17,
+          letterSpacing: -0.1,
+        ),
+      ),
+    ],
+  ),
+  actions: [
+    IconButton(
+      tooltip: _batchMode ? 'Salir de lote' : 'Modo lote',
+      onPressed: () {
+        setState(() {
+          _batchMode = !_batchMode;
+          _selected.clear();
+        });
+      },
+      icon: Icon(
+        _batchMode ? PhosphorIconsRegular.x : PhosphorIconsRegular.stack,
+        color: ColoresApp.texto,
+      ),
+    ),
+  ],
+),
+
       body: FutureBuilder<_VM>(
         future: _future,
         builder: (ctx, snap) {
+          // ✅ sin circular progress
           if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return _MisRecibosSkeleton(accent: accent);
           }
+
           if (snap.hasError) {
             return Padding(
               padding: const EdgeInsets.all(16),
@@ -123,146 +121,97 @@ class _MisRecibosPageState extends State<MisRecibosPage> {
           final vm = snap.data!;
           final proxima = vm.proxima;
 
-          return ListView(
-            controller: _scrollCtrl,
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-            children: [
-              // ------------------ Próxima nómina ------------------
-              Container(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                decoration: BoxDecoration(
-                  color: ColoresApp.blanco,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: ColoresApp.bordeSuave),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: ColoresApp.dorado.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: ColoresApp.dorado.withOpacity(0.22)),
-                      ),
-                      child: Icon(
-                        PhosphorIconsRegular.calendarCheck,
-                        color: ColoresApp.dorado,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Próxima nómina',
-                            style: t.titleSmall?.copyWith(fontWeight: FontWeight.w900, color: ColoresApp.texto),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Qna ${proxima.quincena.toString().padLeft(2, '0')} · ${proxima.anio}',
-                            style: t.bodySmall?.copyWith(fontWeight: FontWeight.w900, color: ColoresApp.textoSuave),
-                          ),
-                        ],
-                      ),
-                    ),
-                    UiPill(
-                      text: proxima.countdownLabel,
-                      fg: proxima.disponible ? accent : ColoresApp.textoSuave,
-                      bg: proxima.disponible ? accent.withOpacity(0.10) : ColoresApp.inputBg,
-                      bd: proxima.disponible ? accent.withOpacity(0.22) : ColoresApp.bordeSuave,
-                      icon: proxima.disponible ? PhosphorIconsRegular.checkCircle : PhosphorIconsRegular.clock,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ------------------ Buscar (COMPACTO) ------------------
-              Align(
-                alignment: Alignment.center,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  child: ReciboFiltersBar(
-                    filters: _filters,
-                    years: years,
-                    onChanged: (f) {
-                      setState(() {
-                        _filters = f;
-                        _selected.clear();
-                      });
-                      _reload();
-                      _scrollToResults(); // ✅ al filtrar, te manda a Resultados
-                    },
+          return RefreshIndicator(
+            onRefresh: _reload,
+            color: accent,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+              children: [
+                // ------------------ Próxima nómina (SIEMPRE) ------------------
+                Container(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  decoration: BoxDecoration(
+                    color: ColoresApp.blanco,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: ColoresApp.bordeSuave),
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ------------------ Resultados (CLAVE) ------------------
-              KeyedSubtree(
-                key: _resultsKey,
-                child: UiSectionCard(
-                  title: 'Resultados',
-                  icon: PhosphorIconsRegular.magnifyingGlass,
-                  child: Column(
+                  child: Row(
                     children: [
-                      if (vm.filtradas.isEmpty)
-                        Text(
-                          'No hay recibos con esos filtros.',
-                          style: t.bodySmall?.copyWith(fontWeight: FontWeight.w900, color: ColoresApp.textoSuave),
-                        )
-                      else
-                        for (final r in vm.filtradas) ...[
-                          ReciboCard(
-                            item: r,
-                            accent: accent,
-                            batchMode: _batchMode,
-                            selected: _selected.contains(r.id),
-                            onToggleSelect: () => _toggleSelect(r.id),
-                            onOpen: () => _open(r.id),
-                            onDownload: () => _descargar(r.id),
-                            onReport: () => _reportar(r.id),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                      if (_batchMode && _selected.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        UiPrimaryButton(
-                          text: 'Descargar lote (${_selected.length})',
-                          accent: accent,
-                          onTap: _descargarLote,
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: ColoresApp.dorado.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: ColoresApp.dorado.withOpacity(0.22)),
                         ),
-                      ],
+                        child: Icon(
+                          PhosphorIconsRegular.calendarCheck,
+                          color: ColoresApp.dorado,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Próxima nómina',
+                              style: t.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: ColoresApp.texto,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              // ✅ Mes + año + qna (compacto)
+                              periodoLabel(proxima.anio, proxima.quincena, mesCorto: true),
+                              style: t.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: ColoresApp.textoSuave,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      UiPill(
+                        text: proxima.countdownLabel,
+                        fg: proxima.disponible ? accent : ColoresApp.textoSuave,
+                        bg: proxima.disponible ? accent.withOpacity(0.10) : ColoresApp.inputBg,
+                        bd: proxima.disponible ? accent.withOpacity(0.22) : ColoresApp.bordeSuave,
+                        icon: proxima.disponible ? PhosphorIconsRegular.checkCircle : PhosphorIconsRegular.clock,
+                      ),
                     ],
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-              // ------------------ Últimas 5 (NO ESTORBA) ------------------
-              if (_hasActiveFilters)
+                // ------------------ Últimas 5 (SIEMPRE y ANTERIORES) ------------------
                 UiSectionCard(
                   title: 'Últimas 5 nóminas',
                   icon: PhosphorIconsRegular.clockCounterClockwise,
-                  child: Theme(
-                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                    child: ExpansionTile(
-                      tilePadding: EdgeInsets.zero,
-                      childrenPadding: EdgeInsets.zero,
-                      initiallyExpanded: false, // ✅ colapsado cuando estás filtrando
-                      title: Text(
-                        'Ver últimas 5',
-                        style: t.bodySmall?.copyWith(fontWeight: FontWeight.w900, color: ColoresApp.texto),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Anteriores a la próxima nómina',
+                        style: t.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: ColoresApp.textoSuave,
+                        ),
                       ),
-                      trailing: Icon(Icons.expand_more_rounded, color: ColoresApp.textoSuave),
-                      children: [
-                        const SizedBox(height: 10),
+                      const SizedBox(height: 10),
+                      if (vm.ultimas.isEmpty)
+                        Text(
+                          'Aún no hay nóminas anteriores registradas.',
+                          style: t.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: ColoresApp.textoSuave,
+                          ),
+                        )
+                      else
                         for (final r in vm.ultimas) ...[
                           ReciboCard(
                             item: r,
@@ -276,29 +225,6 @@ class _MisRecibosPageState extends State<MisRecibosPage> {
                           ),
                           const SizedBox(height: 12),
                         ],
-                      ],
-                    ),
-                  ),
-                )
-              else
-                UiSectionCard(
-                  title: 'Últimas 5 nóminas',
-                  icon: PhosphorIconsRegular.clockCounterClockwise,
-                  child: Column(
-                    children: [
-                      for (final r in vm.ultimas) ...[
-                        ReciboCard(
-                          item: r,
-                          accent: accent,
-                          batchMode: _batchMode,
-                          selected: _selected.contains(r.id),
-                          onToggleSelect: () => _toggleSelect(r.id),
-                          onOpen: () => _open(r.id),
-                          onDownload: () => _descargar(r.id),
-                          onReport: () => _reportar(r.id),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
                       if (_batchMode && _selected.isNotEmpty)
                         UiPrimaryButton(
                           text: 'Descargar lote (${_selected.length})',
@@ -309,8 +235,9 @@ class _MisRecibosPageState extends State<MisRecibosPage> {
                   ),
                 ),
 
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 24),
+              ],
+            ),
           );
         },
       ),
@@ -328,7 +255,9 @@ class _MisRecibosPageState extends State<MisRecibosPage> {
   }
 
   void _open(String id) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReciboDetallePage(reciboId: id)));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ReciboDetallePage(reciboId: id)),
+    );
   }
 
   Future<void> _descargar(String id) async {
@@ -336,12 +265,18 @@ class _MisRecibosPageState extends State<MisRecibosPage> {
       final file = await repo.descargar(id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Descargado: $file (mock).'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text('Descargado: $file (mock).'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No disponible: $e'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text('No disponible: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -352,13 +287,19 @@ class _MisRecibosPageState extends State<MisRecibosPage> {
       final files = await repo.descargarLote(ids);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lote descargado: ${files.length} archivos (mock).'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text('Lote descargado: ${files.length} archivos (mock).'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       setState(() => _selected.clear());
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo descargar: $e'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text('No se pudo descargar: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -368,16 +309,28 @@ class _MisRecibosPageState extends State<MisRecibosPage> {
     if (res == null) return;
 
     try {
-      await repo.reportar(ReporteNominaPayload(reciboId: reciboId, motivo: res.motivo, detalle: res.detalle));
+      await repo.reportar(
+        ReporteNominaPayload(
+          reciboId: reciboId,
+          motivo: res.motivo,
+          detalle: res.detalle,
+        ),
+      );
       if (!mounted) return;
       await _reload();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reporte enviado (mock).'), behavior: SnackBarBehavior.floating),
+        const SnackBar(
+          content: Text('Reporte enviado (mock).'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo enviar: $e'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text('No se pudo enviar: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -387,10 +340,151 @@ class _VM {
   const _VM({
     required this.proxima,
     required this.ultimas,
-    required this.filtradas,
   });
 
   final ProximaNominaInfo proxima;
   final List<ReciboResumen> ultimas;
-  final List<ReciboResumen> filtradas;
+}
+
+/// Skeleton simple (sin animación y sin círculos)
+class _MisRecibosSkeleton extends StatelessWidget {
+  const _MisRecibosSkeleton({required this.accent});
+
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+
+    Widget bar({double w = 140, double h = 10}) {
+      return Container(
+        width: w,
+        height: h,
+        decoration: BoxDecoration(
+          color: ColoresApp.inputBg,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: ColoresApp.bordeSuave),
+        ),
+      );
+    }
+
+    Widget cardRow() {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: ColoresApp.blanco,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: ColoresApp.bordeSuave),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: accent.withOpacity(0.18)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  bar(w: 160, h: 12),
+                  const SizedBox(height: 8),
+                  bar(w: 110, h: 10),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              width: 96,
+              height: 28,
+              decoration: BoxDecoration(
+                color: ColoresApp.inputBg,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: ColoresApp.bordeSuave),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget reciboPlaceholder() {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: ColoresApp.blanco,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: ColoresApp.bordeSuave),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: ColoresApp.inputBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: ColoresApp.bordeSuave),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  bar(w: 180, h: 12),
+                  const SizedBox(height: 8),
+                  bar(w: 120, h: 10),
+                ],
+              ),
+            ),
+            Container(
+              width: 70,
+              height: 26,
+              decoration: BoxDecoration(
+                color: ColoresApp.inputBg,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: ColoresApp.bordeSuave),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+      children: [
+        cardRow(),
+        const SizedBox(height: 12),
+        UiSectionCard(
+          title: 'Últimas 5 nóminas',
+          icon: PhosphorIconsRegular.clockCounterClockwise,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Cargando…',
+                style: t.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: ColoresApp.textoSuave,
+                ),
+              ),
+              const SizedBox(height: 10),
+              for (int i = 0; i < 5; i++) ...[
+                reciboPlaceholder(),
+                const SizedBox(height: 12),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
 }

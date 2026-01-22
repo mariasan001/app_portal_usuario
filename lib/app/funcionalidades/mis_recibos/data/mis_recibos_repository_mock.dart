@@ -17,6 +17,13 @@ class MisRecibosRepositoryMock implements MisRecibosRepository {
     return v;
   }
 
+  int _k(int anio, int quincena) => (anio * 100) + quincena;
+
+  List<ReciboResumen> _sortDesc(List<ReciboResumen> list) {
+    list.sort((a, b) => _k(b.anio, b.quincena).compareTo(_k(a.anio, a.quincena)));
+    return list;
+  }
+
   @override
   Future<ProximaNominaInfo> proximaNomina() async {
     return _delay(MisRecibosMockData.buildProximaNomina(), 180);
@@ -24,8 +31,18 @@ class MisRecibosRepositoryMock implements MisRecibosRepository {
 
   @override
   Future<List<ReciboResumen>> ultimas({int limit = 5}) async {
-    final x = _all.take(limit).map(_applyReportFlag).toList();
-    return _delay(x, 200);
+    final prox = await proximaNomina();
+    final proxKey = _k(prox.anio, prox.quincena);
+
+    // ✅ “Últimas” = anteriores a la próxima nómina, ordenadas desc y top N
+    final out = _all
+        .where((r) => _k(r.anio, r.quincena) < proxKey)
+        .toList();
+
+    _sortDesc(out);
+
+    final top = out.take(limit).map(_applyReportFlag).toList();
+    return _delay(top, 200);
   }
 
   @override
@@ -35,9 +52,13 @@ class MisRecibosRepositoryMock implements MisRecibosRepository {
     if (anio != null) q = q.where((r) => r.anio == anio);
     if (quincena != null) q = q.where((r) => r.quincena == quincena);
 
+    final out = q.map(_applyReportFlag).toList();
+
+    // ✅ siempre orden desc, para que no “salte” raro
+    _sortDesc(out);
+
     // si no filtra nada, muestra un set “bonito”
-    final out = q.take(20).map(_applyReportFlag).toList();
-    return _delay(out, 220);
+    return _delay(out.take(20).toList(), 220);
   }
 
   @override
@@ -49,7 +70,6 @@ class MisRecibosRepositoryMock implements MisRecibosRepository {
 
   @override
   Future<String> descargar(String reciboId) async {
-    // mock path
     return _delay('mock:///downloads/$reciboId.pdf', 250);
   }
 

@@ -143,7 +143,7 @@ class AppShell extends StatelessWidget {
           children: [
             // ❗️ya NO puede ser const
             AppTopBar(
-              nombre: 'Hola,Sagma 👋',
+              nombre: 'Hola,Maria 👋',
               hintSearch: hintSearch,
               onTapBuscar: inServicios ? () => _openServiciosSearch(context) : null,
               searchTrailing: trailing,

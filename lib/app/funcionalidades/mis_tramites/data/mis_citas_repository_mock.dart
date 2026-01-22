@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import '../domain/mis_citas_models.dart';
 import 'mis_citas_mock.dart';
 
@@ -9,8 +7,15 @@ class MisCitasRepositoryMock {
 
   final List<CitaDetalle> _store = List.of(misCitasMock);
 
+  // ✅ CACHE SINCRÓNICO (para UI instantánea)
+  List<CitaResumen> get cache => _buildSortedResumen();
+
+  // ✅ Ahora listar ya no tarda NADA
   Future<List<CitaResumen>> listar() async {
-    await Future.delayed(const Duration(milliseconds: 450));
+    return cache;
+  }
+
+  List<CitaResumen> _buildSortedResumen() {
     final list = _store
         .map(
           (d) => CitaResumen(
@@ -29,7 +34,7 @@ class MisCitasRepositoryMock {
         )
         .toList();
 
-    // Orden: próximas primero (por fecha), luego en proceso, luego finalizadas, canceladas al final
+    // Orden: próximas -> proceso -> finalizadas -> canceladas
     list.sort((a, b) {
       int rank(CitaEstado e) {
         switch (e) {
@@ -56,13 +61,12 @@ class MisCitasRepositoryMock {
     return list;
   }
 
+  // 👇 Estos puedes dejarlos async si quieres, pero SIN delays para que “no se sienta”
   Future<CitaDetalle> obtenerDetalle(String id) async {
-    await Future.delayed(const Duration(milliseconds: 350));
     return _store.firstWhere((x) => x.id == id);
   }
 
   Future<CitaDetalle> cancelar(String id) async {
-    await Future.delayed(const Duration(milliseconds: 500));
     final idx = _store.indexWhere((x) => x.id == id);
     if (idx < 0) throw StateError('Cita no encontrada');
 
@@ -84,7 +88,7 @@ class MisCitasRepositoryMock {
       correos: cur.correos,
       recomendaciones: cur.recomendaciones,
       pasos: [
-        ...cur.pasos.map((p) => p),
+        ...cur.pasos,
         const CitaPaso(titulo: 'Cancelada por el usuario', estado: PasoEstado.completo),
       ],
       constancia: cur.constancia,
@@ -98,7 +102,6 @@ class MisCitasRepositoryMock {
     required String id,
     required DateTime nuevaFechaHora,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 650));
     final idx = _store.indexWhere((x) => x.id == id);
     if (idx < 0) throw StateError('Cita no encontrada');
 
@@ -138,12 +141,10 @@ class MisCitasRepositoryMock {
   }
 
   Future<String> descargarConstancia(String citaId) async {
-    await Future.delayed(const Duration(milliseconds: 800));
     final d = _store.firstWhere((x) => x.id == citaId);
     if (!d.puedeDescargarConstancia) {
       throw StateError('Constancia no disponible o vencida');
     }
-    // mock: regresamos un “archivo” simbólico
     return 'constancia_${d.constancia!.id}.pdf';
   }
 }

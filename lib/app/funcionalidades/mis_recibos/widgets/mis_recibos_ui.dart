@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:portal_servicios_usuario/app/tema/colores.dart';
 
+/// =====================
+/// Helpers de formato
+/// =====================
+
 String money(double v) {
   final s = v.toStringAsFixed(2);
   // sin intl por ahora (mock simple)
@@ -8,6 +12,82 @@ String money(double v) {
 }
 
 String fmt2(int n) => n.toString().padLeft(2, '0');
+
+/// =====================
+/// Helpers de periodo (Año + Quincena)
+/// =====================
+
+/// Convierte (anio, quincena) a una key comparable.
+/// Ej: 2026 Qna 01 => 202601
+int periodoKey(int anio, int quincena) => (anio * 100) + quincena;
+
+/// true si (anio, quincena) es ANTES que (refAnio, refQuincena)
+bool esPeriodoAntes(int anio, int quincena, int refAnio, int refQuincena) {
+  return periodoKey(anio, quincena) < periodoKey(refAnio, refQuincena);
+}
+
+/// true si (anio, quincena) es DESPUÉS que (refAnio, refQuincena)
+bool esPeriodoDespues(int anio, int quincena, int refAnio, int refQuincena) {
+  return periodoKey(anio, quincena) > periodoKey(refAnio, refQuincena);
+}
+
+/// Comparador DESC (más nuevo primero).
+/// Útil para sort(): list.sort((a,b)=>comparePeriodoDesc(...))
+int comparePeriodoDesc(int aAnio, int aQuincena, int bAnio, int bQuincena) {
+  return periodoKey(bAnio, bQuincena).compareTo(periodoKey(aAnio, aQuincena));
+}
+
+/// Quincena 1..24 => mes 1..12
+int mesDeQuincena(int quincena) {
+  final q = quincena.clamp(1, 24);
+  return ((q - 1) ~/ 2) + 1;
+}
+
+const List<String> _mesesEs = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
+
+const List<String> _mesesEsCorto = [
+  'Ene',
+  'Feb',
+  'Mar',
+  'Abr',
+  'May',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dic',
+];
+
+String nombreMesEs(int mes, {bool corto = false}) {
+  final m = mes.clamp(1, 12);
+  return corto ? _mesesEsCorto[m - 1] : _mesesEs[m - 1];
+}
+
+/// Ej: "Enero 2026 · Qna 01"
+String periodoLabel(int anio, int quincena, {bool mesCorto = false}) {
+  final mes = mesDeQuincena(quincena);
+  final mesTxt = nombreMesEs(mes, corto: mesCorto);
+  return '$mesTxt $anio · Qna ${fmt2(quincena)}';
+}
+
+/// =====================
+/// Widgets UI
+/// =====================
 
 class UiPill extends StatelessWidget {
   const UiPill({
