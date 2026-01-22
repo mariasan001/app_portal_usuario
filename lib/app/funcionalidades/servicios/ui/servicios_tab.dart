@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+
 import 'package:portal_servicios_usuario/app/funcionalidades/home/ui/widgets/section_header.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/servicios/data/servicios_mock.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/servicios/domain/servicio_item.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/servicios/ui/widgets/servicio_card.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/servicios/ui/widgets/servicio_detalle_sheet.dart';
 import 'package:portal_servicios_usuario/app/tema/colores.dart';
 
 class ServiciosTab extends StatefulWidget {
@@ -29,13 +30,9 @@ class _ServiciosTabState extends State<ServiciosTab> {
   }
 
   void _open(ServicioItem item) {
-    final r = (item.route ?? '').trim();
-    if (r.isNotEmpty) {
-      context.go(r);
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Abrir: ${item.titulo}')),
+    showServicioDetalleSheet(
+      context: context,
+      item: item,
     );
   }
 
@@ -115,7 +112,7 @@ class _ServiciosTabState extends State<ServiciosTab> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: _itemsTipo.isEmpty
-              ? _EmptyState(text: 'Aún no hay servicios en este apartado.')
+              ? const _EmptyState(text: 'Aún no hay servicios en este apartado.')
               : (_tipo == ServicioTipo.consulta
                   ? Column(
                       children: _itemsTipo.map((it) {

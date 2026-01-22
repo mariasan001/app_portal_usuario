@@ -10,16 +10,35 @@ import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/to
 import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contrase%C3%B1a/RecuperarPasswordPage.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contrase%C3%B1a/nueva_contrasena_page.dart';
 
-// ✅ Shell
-
 // ✅ Contenido de tabs
 import 'package:portal_servicios_usuario/app/funcionalidades/home/ui/inicio_tab.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/pages/servicios_page.dart';
+
+// ✅ Shell
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/shell/app_shell.dart';
 
 class EnrutadorApp {
+  // Útil si luego quieres mostrar páginas/modal en root separado del shell
+  static final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> shellNavigatorKey = GlobalKey<NavigatorState>();
+
   static final GoRouter router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/bienvenida',
+    debugLogDiagnostics: true,
+
+    // UI de error (para que no muera feo)
+    errorBuilder: (context, state) {
+      return Scaffold(
+        body: Center(
+          child: Text(
+            'Ruta no encontrada: ${state.uri}',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+      );
+    },
+
     routes: [
       // ------------------ INTRO / AUTH (sin AppShell) ------------------
       GoRoute(
@@ -44,7 +63,7 @@ class EnrutadorApp {
           final extra = (state.extra as Map?) ?? {};
 
           final backRoute = (extra['backRoute'] ?? '/login') as String;
-          final nextRoute = (extra['nextRoute'] ?? '/home') as String; // ✅ aquí mejor /home
+          final nextRoute = (extra['nextRoute'] ?? '/home') as String; // ✅ mejor /home
           final email = (extra['email'] ?? '') as String;
 
           return TokenPage(
@@ -70,23 +89,47 @@ class EnrutadorApp {
 
       // ------------------ APP (con AppShell siempre) ------------------
       ShellRoute(
+        navigatorKey: shellNavigatorKey,
         builder: (context, state, child) => AppShell(child: child),
         routes: [
+          // ✅ sin transición para que el bottom nav se sienta “nativo”
           GoRoute(
             path: '/home',
-            builder: (context, state) => const InicioTab(),
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: InicioTab(),
+            ),
           ),
+
           GoRoute(
             path: '/servicios',
-            builder: (context, state) => const ServiciosPage(),
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: ServiciosPage(),
+            ),
+
+            // 👇 RUTAS HIJAS (opcionales) para futuro:
+            // routes: [
+            //   GoRoute(
+            //     path: 'detalle/:id',
+            //     builder: (context, state) {
+            //       final id = state.pathParameters['id']!;
+            //       return ServicioDetallePage(id: id); // si luego haces page
+            //     },
+            //   ),
+            // ],
           ),
+
           GoRoute(
             path: '/tramites',
-            builder: (context, state) => const _TramitesPage(),
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: _TramitesPage(),
+            ),
           ),
+
           GoRoute(
             path: '/recibos',
-            builder: (context, state) => const _RecibosPage(),
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: _RecibosPage(),
+            ),
           ),
         ],
       ),
