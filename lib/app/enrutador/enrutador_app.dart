@@ -14,11 +14,13 @@ import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/ca
 import 'package:portal_servicios_usuario/app/funcionalidades/home/ui/inicio_tab.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/pages/servicios_page.dart';
 
+// ✅ NUEVA PAGE (flujo de trámite/consulta)
+
 // ✅ Shell
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/shell/app_shell.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/servicios/ui/widgets/servicio_proceso_page.dart';
 
 class EnrutadorApp {
-  // Útil si luego quieres mostrar páginas/modal en root separado del shell
   static final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
   static final GlobalKey<NavigatorState> shellNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -27,7 +29,6 @@ class EnrutadorApp {
     initialLocation: '/bienvenida',
     debugLogDiagnostics: true,
 
-    // UI de error (para que no muera feo)
     errorBuilder: (context, state) {
       return Scaffold(
         body: Center(
@@ -63,7 +64,7 @@ class EnrutadorApp {
           final extra = (state.extra as Map?) ?? {};
 
           final backRoute = (extra['backRoute'] ?? '/login') as String;
-          final nextRoute = (extra['nextRoute'] ?? '/home') as String; // ✅ mejor /home
+          final nextRoute = (extra['nextRoute'] ?? '/home') as String;
           final email = (extra['email'] ?? '') as String;
 
           return TokenPage(
@@ -92,7 +93,6 @@ class EnrutadorApp {
         navigatorKey: shellNavigatorKey,
         builder: (context, state, child) => AppShell(child: child),
         routes: [
-          // ✅ sin transición para que el bottom nav se sienta “nativo”
           GoRoute(
             path: '/home',
             pageBuilder: (context, state) => const NoTransitionPage(
@@ -105,17 +105,18 @@ class EnrutadorApp {
             pageBuilder: (context, state) => const NoTransitionPage(
               child: ServiciosPage(),
             ),
+          ),
 
-            // 👇 RUTAS HIJAS (opcionales) para futuro:
-            // routes: [
-            //   GoRoute(
-            //     path: 'detalle/:id',
-            //     builder: (context, state) {
-            //       final id = state.pathParameters['id']!;
-            //       return ServicioDetallePage(id: id); // si luego haces page
-            //     },
-            //   ),
-            // ],
+          // ✅ NUEVA RUTA DINÁMICA: flujo de “confirmar y continuar”
+          // Ej: /servicios/tramite/t_no_adeudo
+          // Ej: /servicios/consulta/c_fump
+          GoRoute(
+            path: '/servicios/:tipo/:id',
+            builder: (context, state) {
+              final id = state.pathParameters['id']!;
+              // final tipo = state.pathParameters['tipo']; // si luego quieres validar "consulta/tramite"
+              return ServicioProcesoPage(servicioId: id);
+            },
           ),
 
           GoRoute(
@@ -137,7 +138,7 @@ class EnrutadorApp {
   );
 }
 
-// Placeholders rápidos (para que NO se vea vacío)
+// Placeholders rápidos
 class _TramitesPage extends StatelessWidget {
   const _TramitesPage();
 

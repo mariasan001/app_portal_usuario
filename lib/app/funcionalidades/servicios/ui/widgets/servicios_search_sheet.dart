@@ -4,7 +4,6 @@ import 'package:portal_servicios_usuario/app/tema/colores.dart';
 import '../../data/servicios_mock.dart';
 import '../../domain/servicio_item.dart';
 import 'servicio_card.dart';
-import 'servicio_quick_tile.dart';
 
 class ServiciosSearchSheet extends StatefulWidget {
   const ServiciosSearchSheet({
@@ -38,34 +37,7 @@ class _ServiciosSearchSheetState extends State<ServiciosSearchSheet> {
         ServicioCategoria.remuneraciones,
       ];
 
-  String get _categoriaLabel =>
-      _categoria == ServicioCategoria.todas ? 'Todas' : _categoria.texto;
-
-  List<ServicioItem> get _suggestions {
-    final picksTramites = <String>{
-      't_quinquenio',
-      't_no_adeudo',
-      't_reexpedicion_pagos',
-      't_seguro_vida',
-    };
-    final picksConsultas = <String>{
-      'c_fump',
-      'c_puntualidad',
-    };
-
-    final picks = _tipo == ServicioTipo.tramite ? picksTramites : picksConsultas;
-
-    final list = _all.where((x) => x.tipo == _tipo && picks.contains(x.id)).toList();
-
-    if (list.length < 6) {
-      final extra = _all
-          .where((x) => x.tipo == _tipo && !picks.contains(x.id))
-          .take(6 - list.length);
-      list.addAll(extra);
-    }
-
-    return list.take(6).toList();
-  }
+  String get _categoriaLabel => _categoria == ServicioCategoria.todas ? 'Todas' : _categoria.texto;
 
   List<ServicioItem> get _filtered {
     return _all.where((it) {
@@ -172,9 +144,7 @@ class _ServiciosSearchSheetState extends State<ServiciosSearchSheet> {
                             color: isSel ? ColoresApp.cafe.withOpacity(0.08) : ColoresApp.inputBg,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: isSel
-                                  ? ColoresApp.cafe.withOpacity(0.25)
-                                  : ColoresApp.bordeSuave,
+                              color: isSel ? ColoresApp.cafe.withOpacity(0.25) : ColoresApp.bordeSuave,
                             ),
                           ),
                           child: Row(
@@ -363,49 +333,6 @@ class _ServiciosSearchSheetState extends State<ServiciosSearchSheet> {
                   ],
 
                   const SizedBox(height: 14),
-
-                  // Sugerencias (solo si NO está escribiendo)
-                  if (!_isSearching && _suggestions.isNotEmpty) ...[
-                    Row(
-                      children: [
-                        Text(
-                          'Sugerencias',
-                          style: t.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: ColoresApp.texto,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          'Toca para abrir',
-                          style: t.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: ColoresApp.textoSuave,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      height: 88,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: _suggestions.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 12),
-                        itemBuilder: (_, i) {
-                          final it = _suggestions[i];
-                          return ServicioQuickTile(
-                            item: it,
-                            onTap: () => widget.onOpen(it),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Divider(height: 18, color: ColoresApp.bordeSuave),
-                    const SizedBox(height: 6),
-                  ],
 
                   // Resultados header + contador
                   Row(
