@@ -13,6 +13,7 @@ import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/ca
 // ✅ Contenido de tabs
 import 'package:portal_servicios_usuario/app/funcionalidades/home/ui/inicio_tab.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/pages/citas_page.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/pages/recibos_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/pages/servicios_page.dart';
 
 // ✅ NUEVA PAGE (flujo de trámite/consulta)
@@ -123,7 +124,7 @@ class EnrutadorApp {
           GoRoute(
             path: '/recibos',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: _RecibosPage()),
+                const NoTransitionPage(child: RecibosPage()),
           ),
         ],
       ),
@@ -134,11 +135,4 @@ class EnrutadorApp {
 // Placeholders rápidos
 
 
-class _RecibosPage extends StatelessWidget {
-  const _RecibosPage();
 
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Recibos (placeholder)'));
-  }
-}
