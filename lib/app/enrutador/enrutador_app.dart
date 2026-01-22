@@ -12,6 +12,7 @@ import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/ca
 
 // ✅ Contenido de tabs
 import 'package:portal_servicios_usuario/app/funcionalidades/home/ui/inicio_tab.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/pages/citas_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/pages/servicios_page.dart';
 
 // ✅ NUEVA PAGE (flujo de trámite/consulta)
@@ -21,8 +22,10 @@ import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/shell/app_
 import 'package:portal_servicios_usuario/app/funcionalidades/servicios/ui/widgets/servicio_proceso_page.dart';
 
 class EnrutadorApp {
-  static final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
-  static final GlobalKey<NavigatorState> shellNavigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> rootNavigatorKey =
+      GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> shellNavigatorKey =
+      GlobalKey<NavigatorState>();
 
   static final GoRouter router = GoRouter(
     navigatorKey: rootNavigatorKey,
@@ -46,10 +49,7 @@ class EnrutadorApp {
         path: '/bienvenida',
         builder: (context, state) => const BienvenidaPage(),
       ),
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginPage(),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(
         path: '/registro',
         builder: (context, state) => const RegistroPage(),
@@ -81,10 +81,7 @@ class EnrutadorApp {
           final email = (extra['email'] ?? '') as String;
           final token = (extra['token'] ?? '') as String;
 
-          return NuevaContrasenaPage(
-            email: email,
-            token: token,
-          );
+          return NuevaContrasenaPage(email: email, token: token);
         },
       ),
 
@@ -95,16 +92,14 @@ class EnrutadorApp {
         routes: [
           GoRoute(
             path: '/home',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: InicioTab(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: InicioTab()),
           ),
 
           GoRoute(
             path: '/servicios',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: ServiciosPage(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: ServiciosPage()),
           ),
 
           // ✅ NUEVA RUTA DINÁMICA: flujo de “confirmar y continuar”
@@ -121,16 +116,14 @@ class EnrutadorApp {
 
           GoRoute(
             path: '/tramites',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: _TramitesPage(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: TramitesPage()),
           ),
 
           GoRoute(
             path: '/recibos',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: _RecibosPage(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: _RecibosPage()),
           ),
         ],
       ),
@@ -139,14 +132,7 @@ class EnrutadorApp {
 }
 
 // Placeholders rápidos
-class _TramitesPage extends StatelessWidget {
-  const _TramitesPage();
 
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Mis trámites (placeholder)'));
-  }
-}
 
 class _RecibosPage extends StatelessWidget {
   const _RecibosPage();

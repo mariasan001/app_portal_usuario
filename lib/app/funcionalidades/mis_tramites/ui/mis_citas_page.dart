@@ -1,0 +1,193 @@
+import 'package:flutter/material.dart';
+import 'package:portal_servicios_usuario/app/tema/colores.dart';
+
+import '../data/mis_citas_repository_mock.dart';
+import '../domain/mis_citas_models.dart';
+import '../widgets/cita_card.dart';
+import 'cita_detalle_page.dart';
+
+class MisCitasPage extends StatefulWidget {
+  const MisCitasPage({super.key});
+
+  @override
+  State<MisCitasPage> createState() => _MisCitasPageState();
+}
+
+class _MisCitasPageState extends State<MisCitasPage> {
+  final repo = MisCitasRepositoryMock.instance;
+
+  Future<List<CitaResumen>> _load() => repo.listar();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+
+    return Scaffold(
+      backgroundColor: ColoresApp.blanco,
+      appBar: AppBar(
+        backgroundColor: ColoresApp.blanco,
+        elevation: 0,
+        title: Text(
+          'Mis citas',
+          style: t.titleMedium?.copyWith(
+            fontWeight: FontWeight.w900,
+            color: ColoresApp.texto,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        top: false,
+        child: FutureBuilder<List<CitaResumen>>(
+          future: _load(),
+          builder: (ctx, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snap.hasError) {
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('Error: ${snap.error}'),
+              );
+            }
+
+            final data = snap.data ?? [];
+            final proximas = data.where((x) => x.estado == CitaEstado.proxima).toList();
+            final proceso = data.where((x) => x.estado == CitaEstado.enProceso).toList();
+            final finalizadas = data.where((x) => x.estado == CitaEstado.finalizada).toList();
+
+            return DefaultTabController(
+              length: 3,
+              child: Column(
+                children: [
+                  TabBar(
+                    labelColor: ColoresApp.texto,
+                    unselectedLabelColor: ColoresApp.textoSuave,
+                    indicatorColor: ColoresApp.cafe,
+                    labelStyle: t.bodySmall?.copyWith(fontWeight: FontWeight.w900),
+                    tabs: [
+                      Tab(text: 'Próximas (${proximas.length})'),
+                      Tab(text: 'En proceso (${proceso.length})'),
+                      Tab(text: 'Finalizadas (${finalizadas.length})'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _ListTab(
+                          items: proximas,
+                          emptyText: 'No tienes citas próximas por ahora.',
+                          onOpen: _open,
+                          onCancelar: _cancelar,
+                          onReagendar: _reagendar,
+                        ),
+                        _ListTab(
+                          items: proceso,
+                          emptyText: 'Nada en proceso. Respira: el sistema también 😄',
+                          onOpen: _open,
+                          onCancelar: _cancelar,
+                          onReagendar: _reagendar,
+                        ),
+                        _ListTab(
+                          items: finalizadas,
+                          emptyText: 'Aún no hay citas finalizadas.',
+                          onOpen: _open,
+                          onCancelar: _cancelar,
+                          onReagendar: _reagendar,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // ✅ Estos 3 métodos deben existir en el State (aquí está la corrección)
+  void _open(CitaResumen c) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => CitaDetallePage(citaId: c.id)),
+    );
+  }
+
+  Future<void> _cancelar(CitaResumen c) async {
+    if (!c.puedeCancelar) return;
+
+    try {
+      await repo.cancelar(c.id);
+
+      if (!mounted) return;
+      setState(() {});
+
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cita cancelada (mock).'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo cancelar: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _reagendar(CitaResumen c) async {
+    if (!c.puedeReagendar) return;
+    // El detalle maneja el selector; aquí abrimos al detalle
+    _open(c);
+  }
+}
+
+class _ListTab extends StatelessWidget {
+  const _ListTab({
+    required this.items,
+    required this.emptyText,
+    required this.onOpen,
+    required this.onCancelar,
+    required this.onReagendar,
+  });
+
+  final List<CitaResumen> items;
+  final String emptyText;
+
+  final void Function(CitaResumen c) onOpen;
+  final Future<void> Function(CitaResumen c) onCancelar;
+  final Future<void> Function(CitaResumen c) onReagendar;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(emptyText),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+      itemCount: items.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (ctx, i) {
+        final c = items[i];
+
+        return CitaCard(
+          item: c,
+          onOpen: () => onOpen(c),
+          onCancelar: c.puedeCancelar ? () => onCancelar(c) : null,
+          onReagendar: c.puedeReagendar ? () => onReagendar(c) : null,
+        );
+      },
+    );
+  }
+}
