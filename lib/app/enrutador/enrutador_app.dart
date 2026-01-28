@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/ayuda/ayuda_page.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/documentos/ui/pages/documento_detalle_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/documentos/ui/pages/documentos_page.dart';
 
 import 'package:portal_servicios_usuario/app/funcionalidades/introduccion/ui/bienvenida_page.dart';
@@ -156,6 +157,14 @@ class EnrutadorApp {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: DocumentosPage()),
           ),
+          GoRoute(
+            path: '/documentos/:id',
+            builder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return DocumentoDetallePage(documentoId: id);
+            },
+          ),
+
           GoRoute(
           path: '/ayuda',
           pageBuilder: (context, state) =>

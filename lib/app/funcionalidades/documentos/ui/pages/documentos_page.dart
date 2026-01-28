@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:portal_servicios_usuario/app/tema/colores.dart';
 
@@ -15,15 +16,21 @@ class DocumentosPage extends StatefulWidget {
 class _DocumentosPageState extends State<DocumentosPage> {
   DocumentoCategoria _cat = DocumentoCategoria.constancias;
 
-  List<DocumentoItem> get _filtered =>
-      documentosMock.where((d) => d.categoria == _cat).toList();
+  List<DocumentoItem> get _filtered {
+    final list = documentosMock.where((d) => d.categoria == _cat).toList();
+    // ✅ Más reciente primero
+    list.sort(
+      (a, b) => (b.actualizado ?? DateTime(0)).compareTo(a.actualizado ?? DateTime(0)),
+    );
+    return list;
+  }
 
   Color _estadoColor(DocumentoEstado e) {
     switch (e) {
       case DocumentoEstado.vigente:
         return ColoresApp.dorado;
       case DocumentoEstado.pendiente:
-        return ColoresApp.cafe;
+        return ColoresApp.cafe; // ✅ sutil, solo acento
       case DocumentoEstado.vencido:
         return ColoresApp.vino;
     }
@@ -31,9 +38,15 @@ class _DocumentosPageState extends State<DocumentosPage> {
 
   String _formatFecha(DateTime dt) {
     String two(int v) => v.toString().padLeft(2, '0');
-    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     final mes = meses[dt.month - 1];
     return '${dt.day} $mes · ${two(dt.hour)}:${two(dt.minute)}';
+  }
+
+  void _openDocumento(DocumentoItem d) {
+    // ✅ Documentos NO navegan a /servicios
+    // 👁️ / tap de tarjeta: abre detalle del documento
+    context.go('/documentos/${d.id}');
   }
 
   @override
@@ -50,14 +63,14 @@ class _DocumentosPageState extends State<DocumentosPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ✅ Title SIN icono, con línea delgada café oscuro
+              // ✅ Título con línea delgada café oscuro (SIN ícono)
               Row(
                 children: [
                   Container(
                     width: 3,
                     height: 22,
                     decoration: BoxDecoration(
-                      color: ColoresApp.cafe.withOpacity(0.92), // “café oscuro”
+                      color: ColoresApp.cafe.withOpacity(0.92),
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -78,7 +91,7 @@ class _DocumentosPageState extends State<DocumentosPage> {
 
               const SizedBox(height: 12),
 
-              // ✅ Tabs (NO chips negros)
+              // ✅ Tabs (Segmented / Pills) – sin botoncitos negros
               _CategoriaTabs(
                 value: _cat,
                 onChanged: (c) => setState(() => _cat = c),
@@ -86,7 +99,6 @@ class _DocumentosPageState extends State<DocumentosPage> {
 
               const SizedBox(height: 12),
 
-              // List
               Expanded(
                 child: items.isEmpty
                     ? Center(
@@ -100,6 +112,7 @@ class _DocumentosPageState extends State<DocumentosPage> {
                         ),
                       )
                     : ListView.separated(
+                        physics: const BouncingScrollPhysics(),
                         itemCount: items.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, i) {
@@ -112,11 +125,11 @@ class _DocumentosPageState extends State<DocumentosPage> {
                             estadoLabel: d.estado.label,
                             estadoIcon: d.estado.icon,
                             fechaLabel: d.actualizado == null ? null : _formatFecha(d.actualizado!),
-                            onOpen: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Abrir: ${d.titulo} (demo)')),
-                              );
-                            },
+
+                            // ✅ Tap en tarjeta abre detalle
+                            onOpen: () => _openDocumento(d),
+
+                            // ✅ Acciones demo (luego conectamos)
                             onDownload: () => ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Descargando "${d.titulo}" (demo)')),
                             ),
@@ -136,7 +149,7 @@ class _DocumentosPageState extends State<DocumentosPage> {
 }
 
 /* =========================
-  TABS (Segmented / Pills)
+  TABS (Segmented)
 ========================= */
 
 class _CategoriaTabs extends StatelessWidget {
@@ -176,7 +189,6 @@ class _CategoriaTabs extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: selected ? ColoresApp.blanco : Colors.transparent,
                   borderRadius: BorderRadius.circular(14),
-                
                   boxShadow: selected
                       ? [
                           BoxShadow(
@@ -195,9 +207,7 @@ class _CategoriaTabs extends StatelessWidget {
                     fontSize: 11.4,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.15,
-                    color: selected
-                        ? const Color.fromARGB(255, 0, 0, 0) // ✅ nada negro
-                        : ColoresApp.textoSuave,
+                    color: selected ? ColoresApp.texto : ColoresApp.textoSuave,
                   ),
                 ),
               ),
@@ -210,7 +220,7 @@ class _CategoriaTabs extends StatelessWidget {
 }
 
 /* =========================
-  Lo demás se queda igual
+  CARD
 ========================= */
 
 class _DocumentoCard extends StatelessWidget {
@@ -339,7 +349,7 @@ class _DocumentoCard extends StatelessWidget {
                 children: [
                   _ActionIcon(
                     icon: PhosphorIcons.eye(PhosphorIconsStyle.light),
-                    onTap: onOpen,
+                    onTap: onOpen, // ✅ abre detalle documento
                   ),
                   const SizedBox(width: 8),
                   _ActionIcon(
@@ -421,11 +431,7 @@ class _ActionIcon extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: Icon(
-            icon,
-            size: 18,
-            color: ColoresApp.texto,
-          ),
+          child: Icon(icon, size: 18, color: ColoresApp.texto),
         ),
       ),
     );

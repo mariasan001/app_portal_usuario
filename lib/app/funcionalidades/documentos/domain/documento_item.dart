@@ -48,7 +48,10 @@ class DocumentoItem {
   final DocumentoCategoria categoria;
   final DocumentoEstado estado;
   final DateTime? actualizado;
-  final String? route; // ✅ si existe: navega a /servicios/:tipo/:id
+
+  /// Si existe: navega (ej: /servicios/tramite/constancia_laboral o /servicios/consulta/fump)
+  final String? route;
+
   final IconData icon;
 
   const DocumentoItem({
