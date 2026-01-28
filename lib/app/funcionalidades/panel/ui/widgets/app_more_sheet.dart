@@ -4,6 +4,7 @@ import 'package:portal_servicios_usuario/app/tema/colores.dart';
 
 class AppMoreSheet extends StatelessWidget {
   final VoidCallback onPerfil;
+  final VoidCallback onDocumentos; // ✅ NUEVO
   final VoidCallback onConfig;
   final VoidCallback onAyuda;
   final VoidCallback onLogout;
@@ -15,6 +16,7 @@ class AppMoreSheet extends StatelessWidget {
   const AppMoreSheet({
     super.key,
     required this.onPerfil,
+    required this.onDocumentos, // ✅ NUEVO
     required this.onConfig,
     required this.onAyuda,
     required this.onLogout,
@@ -26,9 +28,9 @@ class AppMoreSheet extends StatelessWidget {
     final t = Theme.of(context).textTheme;
 
     return ColoredBox(
-      color: ColoresApp.blanco, // ✅ blanco real
+      color: ColoresApp.blanco,
       child: Material(
-        type: MaterialType.transparency, // ✅ InkWell sin “pintar” fondo
+        type: MaterialType.transparency,
         child: SafeArea(
           top: false,
           child: Padding(
@@ -47,7 +49,6 @@ class AppMoreSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                 ] else ...[
-                  // ✅ espacio para que no se vea pegado al handle del sistema
                   const SizedBox(height: 6),
                 ],
 
@@ -93,7 +94,20 @@ class AppMoreSheet extends StatelessWidget {
                       accent: ColoresApp.dorado,
                       onTap: onPerfil,
                     ),
+
                     const _DividerSoft(),
+
+                    // ✅ NUEVO: Mis documentos / Expediente
+                    _ModernTile(
+                      icon: PhosphorIcons.folderOpen(PhosphorIconsStyle.light),
+                      title: 'Mis documentos',
+                      subtitle: 'Constancias, vigencia e información',
+                      accent: ColoresApp.vino, // sobrio y consistente
+                      onTap: onDocumentos,
+                    ),
+
+                    const _DividerSoft(),
+
                     _ModernTile(
                       icon: PhosphorIcons.gear(PhosphorIconsStyle.light),
                       title: 'Configuración',
@@ -101,12 +115,14 @@ class AppMoreSheet extends StatelessWidget {
                       accent: ColoresApp.cafe,
                       onTap: onConfig,
                     ),
+
                     const _DividerSoft(),
+
                     _ModernTile(
                       icon: PhosphorIcons.headset(PhosphorIconsStyle.light),
                       title: 'Ayuda y soporte',
                       subtitle: 'Resuelve dudas rápido',
-                      accent: ColoresApp.vino,
+                      accent: ColoresApp.dorado,
                       onTap: onAyuda,
                     ),
                   ],

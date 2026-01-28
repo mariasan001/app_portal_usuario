@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/ayuda/ayuda_page.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/documentos/ui/pages/documentos_page.dart';
 
 import 'package:portal_servicios_usuario/app/funcionalidades/introduccion/ui/bienvenida_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/login/login_page.dart';
@@ -16,15 +18,20 @@ import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/pages/cita
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/pages/recibos_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/pages/servicios_page.dart';
 
-// ✅ NUEVA PAGE (flujo de trámite/consulta)
+// ✅ Flujo de trámite/consulta
+import 'package:portal_servicios_usuario/app/funcionalidades/servicios/ui/widgets/servicio_proceso_page.dart';
 
 // ✅ Shell
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/shell/app_shell.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/servicios/ui/widgets/servicio_proceso_page.dart';
+
+// ✅ NUEVAS PAGES (dentro de la app)
+// Ajusta estos imports según tu estructura real:
+import 'package:portal_servicios_usuario/app/funcionalidades/perfil/ui/perfil_page.dart';
 
 class EnrutadorApp {
   static final GlobalKey<NavigatorState> rootNavigatorKey =
       GlobalKey<NavigatorState>();
+
   static final GlobalKey<NavigatorState> shellNavigatorKey =
       GlobalKey<NavigatorState>();
 
@@ -33,6 +40,7 @@ class EnrutadorApp {
     initialLocation: '/bienvenida',
     debugLogDiagnostics: true,
 
+    // ✅ Si alguien navega a una ruta inexistente
     errorBuilder: (context, state) {
       return Scaffold(
         body: Center(
@@ -45,12 +53,18 @@ class EnrutadorApp {
     },
 
     routes: [
-      // ------------------ INTRO / AUTH (sin AppShell) ------------------
+      // ===================================================================
+      // 1) INTRO / AUTH (SIN AppShell)
+      //    Aquí NO se muestra topbar/bottomnav.
+      // ===================================================================
       GoRoute(
         path: '/bienvenida',
         builder: (context, state) => const BienvenidaPage(),
       ),
-      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginPage(),
+      ),
       GoRoute(
         path: '/registro',
         builder: (context, state) => const RegistroPage(),
@@ -62,6 +76,7 @@ class EnrutadorApp {
       GoRoute(
         path: '/token',
         builder: (context, state) {
+          // ✅ Usamos extras para pasar datos al TokenPage
           final extra = (state.extra as Map?) ?? {};
 
           final backRoute = (extra['backRoute'] ?? '/login') as String;
@@ -86,53 +101,68 @@ class EnrutadorApp {
         },
       ),
 
-      // ------------------ APP (con AppShell siempre) ------------------
+      // ===================================================================
+      // 2) APP (CON AppShell SIEMPRE)
+      //    Todo lo que sea "dentro del portal" va aquí.
+      // ===================================================================
       ShellRoute(
         navigatorKey: shellNavigatorKey,
         builder: (context, state, child) => AppShell(child: child),
         routes: [
+          // ------------------ Tabs principales ------------------
           GoRoute(
             path: '/home',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: InicioTab()),
           ),
-
           GoRoute(
             path: '/servicios',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: ServiciosPage()),
           ),
+          GoRoute(
+            path: '/tramites',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: TramitesPage()),
+          ),
+          GoRoute(
+            path: '/recibos',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: RecibosPage()),
+          ),
 
-          // ✅ NUEVA RUTA DINÁMICA: flujo de “confirmar y continuar”
+          // ------------------ Flujo dinámico de servicio ------------------
+          // ✅ NUEVA RUTA DINÁMICA: confirmar y continuar
           // Ej: /servicios/tramite/t_no_adeudo
           // Ej: /servicios/consulta/c_fump
           GoRoute(
             path: '/servicios/:tipo/:id',
             builder: (context, state) {
               final id = state.pathParameters['id']!;
-              // final tipo = state.pathParameters['tipo']; // si luego quieres validar "consulta/tramite"
+              // final tipo = state.pathParameters['tipo']; // si luego validas consulta/tramite
               return ServicioProcesoPage(servicioId: id);
             },
           ),
 
+          // ------------------ NUEVAS SECCIONES "Más opciones" ------------------
+          // ✅ Perfil (desde avatar o desde el AppMoreSheet)
           GoRoute(
-            path: '/tramites',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: TramitesPage()),
+            path: '/perfil',
+            builder: (context, state) => const PerfilPage(),
           ),
 
           GoRoute(
-            path: '/recibos',
+            path: '/documentos',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: RecibosPage()),
+                const NoTransitionPage(child: DocumentosPage()),
           ),
+          GoRoute(
+          path: '/ayuda',
+          pageBuilder: (context, state) =>
+          const NoTransitionPage(child: AyudaSoportePage()),
+         ),
         ],
       ),
     ],
   );
 }
-
-// Placeholders rápidos
-
-
-

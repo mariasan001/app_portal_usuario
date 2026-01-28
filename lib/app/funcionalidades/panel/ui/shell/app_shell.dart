@@ -71,9 +71,32 @@ class AppShell extends StatelessWidget {
         data: sheetTheme,
         child: AppMoreSheet(
           showCustomHandle: false,
-          onPerfil: () => Navigator.pop(ctx),
-          onConfig: () => Navigator.pop(ctx),
-          onAyuda: () => Navigator.pop(ctx),
+
+          // ✅ Perfil
+          onPerfil: () {
+            Navigator.pop(ctx);
+            context.go('/perfil');
+          },
+
+          // ✅ Documentos
+          onDocumentos: () {
+            Navigator.pop(ctx);
+            context.go('/documentos');
+          },
+
+          // ✅ Config (placeholder)
+          onConfig: () {
+            Navigator.pop(ctx);
+            // context.go('/config');
+          },
+
+          // ✅ Ayuda (placeholder)
+          onAyuda: () {
+            Navigator.pop(ctx);
+             context.go('/ayuda');
+          },
+
+          // ✅ Logout
           onLogout: () {
             Navigator.pop(ctx);
             context.go('/login');
@@ -110,7 +133,15 @@ class AppShell extends StatelessWidget {
     );
   }
 
-  // ✅ NUEVO: Notificaciones PRO
+  // ✅ FUTURO: aquí irá DocumentosSearchSheet (paso 2)
+  void _openDocumentosSearch(BuildContext context) {
+    // siguiente paso: showModalBottomSheet con DocumentosSearchSheet(...)
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Buscador de documentos (pendiente)')),
+    );
+  }
+
+  // ✅ Notificaciones PRO
   void _openNotificaciones(BuildContext context, List<NotificacionItem> items) {
     showModalBottomSheet(
       context: context,
@@ -126,7 +157,6 @@ class AppShell extends StatelessWidget {
       builder: (_) => NotificacionesSheet(
         items: items,
         onMarkAllRead: () {
-          // 🔥 aquí después conectas tu lógica real (provider/bloc/api)
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Marcadas como leídas (demo)')),
@@ -135,14 +165,12 @@ class AppShell extends StatelessWidget {
         onOpen: (item) {
           Navigator.pop(context);
 
-          // ✅ si mandas route en el item, navega
           final r = (item.route ?? '').trim();
           if (r.isNotEmpty) {
             context.go(r);
             return;
           }
 
-          // fallback demo
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Abrir: ${item.titulo}')),
           );
@@ -157,9 +185,14 @@ class AppShell extends StatelessWidget {
     final currentIndex = _indexFromLocation(loc);
 
     final inServicios = loc.startsWith('/servicios');
+    final inDocs = loc.startsWith('/documentos');
 
     // ✅ Hint dinámico por sección
-    final hintSearch = inServicios ? 'Buscar trámites y consultas…' : 'Buscar en tu portal…';
+    final hintSearch = inServicios
+        ? 'Buscar trámites y consultas…'
+        : inDocs
+            ? 'Buscar documentos y constancias…'
+            : 'Buscar en tu portal…';
 
     // ✅ Trailing dinámico: en servicios mostramos “filtros”
     final trailing = inServicios
@@ -181,10 +214,8 @@ class AppShell extends StatelessWidget {
           )
         : null;
 
-    // ✅ Avatar (asset por ahora)
     final avatar = const AssetImage('assets/img/perfil.png');
 
-    // ✅ DEMO: lista de notificaciones (después viene del backend)
     final demoNotifs = <NotificacionItem>[
       NotificacionItem(
         id: '1',
@@ -194,7 +225,7 @@ class AppShell extends StatelessWidget {
         tipo: NotiTipo.tramite,
         estado: NotiEstado.enProceso,
         leida: false,
-        route: '/tramites', // ejemplo
+        route: '/tramites',
       ),
       NotificacionItem(
         id: '2',
@@ -204,7 +235,7 @@ class AppShell extends StatelessWidget {
         tipo: NotiTipo.cita,
         estado: NotiEstado.proxima,
         leida: false,
-        route: '/tramites', // ejemplo
+        route: '/tramites',
       ),
       NotificacionItem(
         id: '3',
@@ -214,11 +245,10 @@ class AppShell extends StatelessWidget {
         tipo: NotiTipo.recibo,
         estado: NotiEstado.listo,
         leida: true,
-        route: '/recibos', // ejemplo
+        route: '/recibos',
       ),
     ];
 
-    // ✅ Badge = no leídas
     final notifsPendientes = demoNotifs.where((n) => !n.leida).length;
 
     return Scaffold(
@@ -230,20 +260,19 @@ class AppShell extends StatelessWidget {
               nombre: 'Hola, Maria 👋',
               hintSearch: hintSearch,
 
-              // 🔎 Buscar
-              onTapBuscar: inServicios ? () => _openServiciosSearch(context) : null,
+              // 🔎 Buscar (adaptado por sección)
+              onTapBuscar: inServicios
+                  ? () => _openServiciosSearch(context)
+                  : inDocs
+                      ? () => _openDocumentosSearch(context)
+                      : null,
               searchTrailing: trailing,
 
-              // 👤 Perfil
+              // 👤 Perfil (topbar)
               avatarImage: avatar,
-              onTapPerfil: () {
-                // después: context.go('/perfil');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Abrir perfil')),
-                );
-              },
+              onTapPerfil: () => context.go('/perfil'),
 
-              // 🔔 Notificaciones (YA PRO)
+              // 🔔 Notificaciones
               notificacionesPendientes: notifsPendientes,
               showNotificationDotWhenZero: true,
               onTapNotificaciones: () => _openNotificaciones(context, demoNotifs),
