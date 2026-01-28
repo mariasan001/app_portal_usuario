@@ -12,11 +12,16 @@ class NoticieroPostCard extends StatelessWidget {
   final VoidCallback onLike;
   final VoidCallback onShare;
 
+  /// Ratio cuando el card NO tiene altura limitada (feed vertical).
+  /// Más bajo => imagen más alta (más “larga”).
+  final double imageAspectRatio;
+
   const NoticieroPostCard({
     super.key,
     required this.post,
     required this.onLike,
     required this.onShare,
+    this.imageAspectRatio = 11 / 14, // 👈 aquí lo ajustas si quieres
   });
 
   Color _accent(NoticieroEtiqueta e) {
@@ -31,6 +36,7 @@ class NoticieroPostCard extends StatelessWidget {
   }
 
   bool get _hasAvatar => (post.autorAvatarUrl ?? '').trim().isNotEmpty;
+  bool get _hasImage => post.imagenUrl.trim().isNotEmpty;
 
   String get _authorInitial {
     final name = post.autorNombre.trim();
@@ -38,22 +44,16 @@ class NoticieroPostCard extends StatelessWidget {
     return name[0].toUpperCase();
   }
 
-  // ✅ Ajusta aquí si tu campo se llama distinto
   String _formatFecha(DateTime dt) {
     String two(int v) => v.toString().padLeft(2, '0');
     final h = two(dt.hour);
     final m = two(dt.minute);
 
-    // Formato simple: "Hoy 14:32" / "21 Ene 14:32"
     final now = DateTime.now();
     final isToday = now.year == dt.year && now.month == dt.month && now.day == dt.day;
-
     if (isToday) return 'Hoy · $h:$m';
 
-    const meses = [
-      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-    ];
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     final mes = meses[dt.month - 1];
     return '${dt.day} $mes · $h:$m';
   }
@@ -62,62 +62,100 @@ class NoticieroPostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = _accent(post.etiqueta);
 
-    return Material(
-      color: ColoresApp.blanco,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: ColoresApp.bordeSuave),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _Header(
-              autorNombre: post.autorNombre,
-              fechaPublicacion: post.fechaPublicacion, // ✅ Ajusta si se llama distinto
-              hasAvatar: _hasAvatar,
-              autorAvatarUrl: post.autorAvatarUrl,
-              authorInitial: _authorInitial,
-              etiqueta: post.etiqueta.texto,
-              accent: accent,
-              formatFecha: _formatFecha,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // ✅ En horizontal, el item viene con altura limitada => aquí ocurre el overflow si no controlamos.
+        final boundedHeight = constraints.hasBoundedHeight;
 
-            _LikeableImage(
-              imageUrl: post.imagenUrl,
-              accent: accent,
-              etiqueta: post.etiqueta.texto,
-              onDoubleTapLike: () {
-                HapticFeedback.selectionClick();
-                onLike();
-              },
-            ),
+        // ✅ Solo usamos flex si hay altura limitada Y hay imagen.
+        final useFlexImage = boundedHeight && _hasImage;
 
-            _ActionsRow(
-              isLiked: post.isLiked,
-              likes: post.likes,
-              onLike: () {
-                HapticFeedback.selectionClick();
-                onLike();
-              },
-              onShare: () {
-                HapticFeedback.selectionClick();
-                onShare();
-              },
-            ),
+        return Material(
+          color: ColoresApp.blanco,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: ColoresApp.bordeSuave),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Column(
+              mainAxisSize: useFlexImage ? MainAxisSize.max : MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Header(
+                  autorNombre: post.autorNombre,
+                  fechaPublicacion: post.fechaPublicacion,
+                  hasAvatar: _hasAvatar,
+                  autorAvatarUrl: post.autorAvatarUrl,
+                  authorInitial: _authorInitial,
+                  etiqueta: post.etiqueta.texto,
+                  accent: accent,
+                  formatFecha: _formatFecha,
+                ),
 
-            _Caption(
-              titulo: post.titulo,
-              descripcion: post.descripcion,
+                // ✅ Imagen SOLO si existe (sin huecos)
+                if (_hasImage) ...[
+                  if (useFlexImage)
+                    Expanded(
+                      child: _LikeableImage(
+                        imageUrl: post.imagenUrl,
+                        useAspectRatio: false, // 👈 en horizontal se ajusta al espacio
+                        aspectRatio: imageAspectRatio,
+                        onDoubleTapLike: () {
+                          HapticFeedback.selectionClick();
+                          onLike();
+                        },
+                      ),
+                    )
+                  else
+                    _LikeableImage(
+                      imageUrl: post.imagenUrl,
+                      useAspectRatio: true, // 👈 en vertical respeta ratio
+                      aspectRatio: imageAspectRatio,
+                      onDoubleTapLike: () {
+                        HapticFeedback.selectionClick();
+                        onLike();
+                      },
+                    ),
+                ],
+
+                // ✅ Si NO hay imagen: separador sutil (0 blancos)
+                if (!_hasImage)
+                  Container(
+                    height: 1,
+                    color: ColoresApp.bordeSuave.withOpacity(0.7),
+                  ),
+
+                _ActionsRow(
+                  isLiked: post.isLiked,
+                  likes: post.likes,
+                  onLike: () {
+                    HapticFeedback.selectionClick();
+                    onLike();
+                  },
+                  onShare: () {
+                    HapticFeedback.selectionClick();
+                    onShare();
+                  },
+                ),
+
+                _Caption(
+                  titulo: post.titulo,
+                  descripcion: post.descripcion,
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
+
+/* =======================================================================
+  HEADER
+======================================================================= */
 
 class _Header extends StatelessWidget {
   final String autorNombre;
@@ -173,7 +211,6 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(width: 10),
 
-          // ✅ Nombre + hora debajo
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,7 +220,7 @@ class _Header extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: t.bodyMedium?.copyWith(
-                    fontSize: 13.2,
+                    fontSize: 11.2,
                     fontWeight: FontWeight.w900,
                     color: ColoresApp.texto,
                     letterSpacing: 0.1,
@@ -193,7 +230,7 @@ class _Header extends StatelessWidget {
                 Text(
                   formatFecha(fechaPublicacion),
                   style: t.bodySmall?.copyWith(
-                    fontSize: 11.0,
+                    fontSize: 10.0,
                     fontWeight: FontWeight.w600,
                     color: ColoresApp.textoSuave,
                     height: 1.1,
@@ -230,7 +267,7 @@ class _TagChip extends StatelessWidget {
       child: Text(
         text,
         style: t.labelSmall?.copyWith(
-          fontSize: 10.5,
+          fontSize: 9.5,
           fontWeight: FontWeight.w900,
           color: accent,
           letterSpacing: 0.2,
@@ -240,17 +277,24 @@ class _TagChip extends StatelessWidget {
   }
 }
 
+/* =======================================================================
+  IMAGE (asset/network) + HEART POP
+======================================================================= */
+
 class _LikeableImage extends StatefulWidget {
   final String imageUrl;
-  final Color accent;
-  final String etiqueta;
   final VoidCallback onDoubleTapLike;
+
+  /// Si true: usa AspectRatio (vertical feed).
+  /// Si false: se adapta al espacio (horizontal feed con altura fija).
+  final bool useAspectRatio;
+  final double aspectRatio;
 
   const _LikeableImage({
     required this.imageUrl,
-    required this.accent,
-    required this.etiqueta,
     required this.onDoubleTapLike,
+    required this.useAspectRatio,
+    required this.aspectRatio,
   });
 
   @override
@@ -278,61 +322,90 @@ class _LikeableImageState extends State<_LikeableImage> with SingleTickerProvide
 
   void _popHeart() => _c.forward(from: 0);
 
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 16 / 10,
-      child: GestureDetector(
-        onDoubleTap: () {
-          widget.onDoubleTapLike();
-          _popHeart();
-        },
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // ✅ SIN degradado (como lo tenías)
-            Image.network(
-              widget.imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return Container(
-                  color: ColoresApp.inputBg,
-                  alignment: Alignment.center,
-                  child: Icon(
-                    PhosphorIcons.image(PhosphorIconsStyle.light),
-                    color: ColoresApp.textoSuave,
-                    size: 28,
-                  ),
-                );
-              },
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) return child;
-                return Container(color: ColoresApp.inputBg);
-              },
-            ),
+  bool _isAsset(String v) => v.trim().startsWith('assets/');
+  bool _isNetwork(String v) {
+    final s = v.trim();
+    return s.startsWith('http://') || s.startsWith('https://');
+  }
 
-            // chip flotante (se queda)
-     
-            // heart pop (doble tap)
-            Center(
-              child: FadeTransition(
-                opacity: _fade,
-                child: ScaleTransition(
-                  scale: _scale,
-                  child: Icon(
-                    PhosphorIcons.heart(PhosphorIconsStyle.fill),
-                    size: 78,
-                    color: ColoresApp.blanco.withOpacity(0.92),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+  Widget _placeholder() {
+    return Container(
+      color: ColoresApp.inputBg,
+      alignment: Alignment.center,
+      child: Icon(
+        PhosphorIcons.image(PhosphorIconsStyle.light),
+        color: ColoresApp.textoSuave,
+        size: 28,
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final src = widget.imageUrl.trim();
+
+    Widget image;
+    if (_isAsset(src)) {
+      image = Image.asset(
+        src,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholder(),
+      );
+    } else if (_isNetwork(src)) {
+      image = Image.network(
+        src,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholder(),
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return Container(color: ColoresApp.inputBg);
+        },
+      );
+    } else {
+      image = _placeholder();
+    }
+
+    final content = GestureDetector(
+      onDoubleTap: () {
+        widget.onDoubleTapLike();
+        _popHeart();
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          image,
+          Center(
+            child: FadeTransition(
+              opacity: _fade,
+              child: ScaleTransition(
+                scale: _scale,
+                child: Icon(
+                  PhosphorIcons.heart(PhosphorIconsStyle.fill),
+                  size: 78,
+                  color: ColoresApp.blanco.withOpacity(0.92),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // ✅ Vertical: ratio controlado / Horizontal: se adapta (sin overflow)
+    if (widget.useAspectRatio) {
+      return AspectRatio(
+        aspectRatio: widget.aspectRatio,
+        child: content,
+      );
+    }
+
+    return SizedBox.expand(child: content);
+  }
 }
+
+/* =======================================================================
+  ACTIONS
+======================================================================= */
 
 class _ActionsRow extends StatelessWidget {
   final bool isLiked;
@@ -421,6 +494,10 @@ class _ActionPill extends StatelessWidget {
   }
 }
 
+/* =======================================================================
+  CAPTION
+======================================================================= */
+
 class _Caption extends StatelessWidget {
   final String titulo;
   final String? descripcion;
@@ -437,13 +514,12 @@ class _Caption extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ✅ título más pequeño
           Text(
             titulo,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: t.bodyMedium?.copyWith(
-              fontSize: 12.2, // 👈 antes 13.2
+              fontSize: 12.2,
               fontWeight: FontWeight.w900,
               color: ColoresApp.texto,
               letterSpacing: 0.1,

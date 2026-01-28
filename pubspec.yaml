@@ -64,6 +64,8 @@ flutter:
       - assets/img/intro_2.png
       - assets/img/intro_3.png
       - assets/img/fondo.png
+      - assets/img/perfil.png
+      - assets/img/post/
       - assets/ornamentos/
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -6,6 +6,10 @@ import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/ap
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_more_sheet.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/panel/ui/widgets/app_top_bar.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/servicios/ui/widgets/servicios_search_sheet.dart';
+
+// ✅ NUEVO: notificaciones
+import 'package:portal_servicios_usuario/app/funcionalidades/notificaciones/ui/widgets/notificaciones_sheet.dart';
+
 import 'package:portal_servicios_usuario/app/tema/colores.dart';
 
 class AppShell extends StatelessWidget {
@@ -106,6 +110,47 @@ class AppShell extends StatelessWidget {
     );
   }
 
+  // ✅ NUEVO: Notificaciones PRO
+  void _openNotificaciones(BuildContext context, List<NotificacionItem> items) {
+    showModalBottomSheet(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      barrierColor: Colors.black.withOpacity(0.40),
+      backgroundColor: ColoresApp.blanco,
+      clipBehavior: Clip.antiAlias,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) => NotificacionesSheet(
+        items: items,
+        onMarkAllRead: () {
+          // 🔥 aquí después conectas tu lógica real (provider/bloc/api)
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Marcadas como leídas (demo)')),
+          );
+        },
+        onOpen: (item) {
+          Navigator.pop(context);
+
+          // ✅ si mandas route en el item, navega
+          final r = (item.route ?? '').trim();
+          if (r.isNotEmpty) {
+            context.go(r);
+            return;
+          }
+
+          // fallback demo
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Abrir: ${item.titulo}')),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = GoRouterState.of(context).uri.toString();
@@ -113,7 +158,7 @@ class AppShell extends StatelessWidget {
 
     final inServicios = loc.startsWith('/servicios');
 
-    // ✅ Hint dinámico por sección (fino y útil)
+    // ✅ Hint dinámico por sección
     final hintSearch = inServicios ? 'Buscar trámites y consultas…' : 'Buscar en tu portal…';
 
     // ✅ Trailing dinámico: en servicios mostramos “filtros”
@@ -136,19 +181,74 @@ class AppShell extends StatelessWidget {
           )
         : null;
 
+    // ✅ Avatar (asset por ahora)
+    final avatar = const AssetImage('assets/img/perfil.png');
+
+    // ✅ DEMO: lista de notificaciones (después viene del backend)
+    final demoNotifs = <NotificacionItem>[
+      NotificacionItem(
+        id: '1',
+        titulo: 'Trámite en proceso',
+        mensaje: 'Tu solicitud fue recibida y está siendo validada.',
+        fecha: DateTime.now().subtract(const Duration(minutes: 18)),
+        tipo: NotiTipo.tramite,
+        estado: NotiEstado.enProceso,
+        leida: false,
+        route: '/tramites', // ejemplo
+      ),
+      NotificacionItem(
+        id: '2',
+        titulo: 'Cita próxima',
+        mensaje: 'Mañana 10:30 am tienes una cita programada.',
+        fecha: DateTime.now().subtract(const Duration(hours: 3)),
+        tipo: NotiTipo.cita,
+        estado: NotiEstado.proxima,
+        leida: false,
+        route: '/tramites', // ejemplo
+      ),
+      NotificacionItem(
+        id: '3',
+        titulo: 'Recibo disponible',
+        mensaje: 'Tu recibo de esta quincena ya fue cargado.',
+        fecha: DateTime.now().subtract(const Duration(days: 1)),
+        tipo: NotiTipo.recibo,
+        estado: NotiEstado.listo,
+        leida: true,
+        route: '/recibos', // ejemplo
+      ),
+    ];
+
+    // ✅ Badge = no leídas
+    final notifsPendientes = demoNotifs.where((n) => !n.leida).length;
+
     return Scaffold(
       backgroundColor: ColoresApp.blanco,
       body: SafeArea(
         child: Column(
           children: [
-            // ❗️ya NO puede ser const
             AppTopBar(
-              nombre: 'Hola,Maria 👋',
+              nombre: 'Hola, Maria 👋',
               hintSearch: hintSearch,
+
+              // 🔎 Buscar
               onTapBuscar: inServicios ? () => _openServiciosSearch(context) : null,
               searchTrailing: trailing,
-              // onTapPerfil / onTapNotificaciones los conectas luego si quieres
+
+              // 👤 Perfil
+              avatarImage: avatar,
+              onTapPerfil: () {
+                // después: context.go('/perfil');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Abrir perfil')),
+                );
+              },
+
+              // 🔔 Notificaciones (YA PRO)
+              notificacionesPendientes: notifsPendientes,
+              showNotificationDotWhenZero: true,
+              onTapNotificaciones: () => _openNotificaciones(context, demoNotifs),
             ),
+
             Expanded(child: child),
           ],
         ),

@@ -26,7 +26,7 @@ class NoticieroFeed extends StatelessWidget {
     required this.onLike,
     required this.onShare,
     this.direction = Axis.vertical,
-    this.height = 430,
+    this.height = 530,
     this.itemWidth = 320,
     this.padding = const EdgeInsets.fromLTRB(16, 14, 16, 18),
   });

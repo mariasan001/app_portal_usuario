@@ -19,7 +19,7 @@ class ReciboCard extends StatelessWidget {
   });
 
   final ReciboResumen item;
-  final Color accent; // en tu page viene ColoresApp.cafe
+  final Color accent;
 
   final VoidCallback onOpen;
   final VoidCallback onDownload;
@@ -33,13 +33,10 @@ class ReciboCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
 
-    // 🎨 roles de color (más variedad, menos “todo café”)
-    final primary = accent; // Café (acción principal)
-    final doc = ColoresApp.dorado; // Documento / highlight
-    final danger = ColoresApp.vino; // Reporte / alerta
-    final softBg = ColoresApp.fondoCrema.withOpacity(0.35);
+    final primary = accent; // café
+    final doc = ColoresApp.dorado; // dorado
+    final danger = ColoresApp.vino; // vino
 
-    // Estado (solo una vez)
     final estadoPill = item.disponible
         ? UiPill(
             text: 'Disponible',
@@ -82,7 +79,6 @@ class ReciboCard extends StatelessWidget {
             // ---------- Header ----------
             Row(
               children: [
-                // Icono documento (dorado)
                 Container(
                   width: 38,
                   height: 38,
@@ -99,7 +95,6 @@ class ReciboCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
 
-                // Título (un pelín más chico)
                 Expanded(
                   child: Text(
                     item.periodoLabel,
@@ -108,14 +103,13 @@ class ReciboCard extends StatelessWidget {
                     style: t.titleSmall?.copyWith(
                       fontWeight: FontWeight.w900,
                       color: ColoresApp.texto,
-                      fontSize: 14.5,
+                      fontSize: 13.8, // 👈 menos
                       letterSpacing: -0.2,
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
 
-                // Batch check OR estado
                 if (batchMode)
                   InkWell(
                     borderRadius: BorderRadius.circular(999),
@@ -144,7 +138,6 @@ class ReciboCard extends StatelessWidget {
               ],
             ),
 
-            // Reporte pill (si aplica)
             if (!batchMode && reportePill != null) ...[
               const SizedBox(height: 10),
               Wrap(
@@ -156,7 +149,7 @@ class ReciboCard extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // ---------- Neto (card suave con crema) ----------
+            // ---------- Neto ----------
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
@@ -177,7 +170,7 @@ class ReciboCard extends StatelessWidget {
                       style: t.bodySmall?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: ColoresApp.textoSuave,
-                        fontSize: 12.5,
+                        fontSize: 12.0, // 👈 menos
                       ),
                     ),
                   ),
@@ -186,7 +179,7 @@ class ReciboCard extends StatelessWidget {
                     style: t.titleSmall?.copyWith(
                       fontWeight: FontWeight.w900,
                       color: ColoresApp.texto,
-                      fontSize: 14.5,
+                      fontSize: 13.8, // 👈 menos
                       letterSpacing: -0.2,
                     ),
                   ),
@@ -194,7 +187,7 @@ class ReciboCard extends StatelessWidget {
               ),
             ),
 
-            // ---------- Actions (compactas) ----------
+            // ---------- Actions ----------
             if (!batchMode) ...[
               const SizedBox(height: 12),
               Row(
@@ -212,7 +205,7 @@ class ReciboCard extends StatelessWidget {
                         style: t.bodySmall?.copyWith(
                           fontWeight: FontWeight.w900,
                           color: danger,
-                          fontSize: 12.8,
+                          fontSize: 12.2, // 👈 menos
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
@@ -239,7 +232,7 @@ class ReciboCard extends StatelessWidget {
                         style: t.bodySmall?.copyWith(
                           fontWeight: FontWeight.w900,
                           color: ColoresApp.blanco,
-                          fontSize: 12.8,
+                          fontSize: 12.2, // 
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
