@@ -6,31 +6,6 @@ import 'auth_banner.dart';
 import 'auth_primary_button.dart';
 
 class AuthShell extends StatelessWidget {
-  final String titulo;
-  final String subtitulo;
-  final Widget child;
-
-  final String primaryText;
-  final VoidCallback onPrimary;
-
-  final Widget? footer;
-
-  // ✅ NUEVO: slot superior (logos, etc.) FIJO ARRIBA
-  final Widget? childTop;
-
-  // ✅ si quieres mostrar back
-  final bool showBack;
-  final VoidCallback? onBack;
-  final String fallbackBackRoute;
-
-  // ✅ Fondo opcional
-  final String? backgroundAsset;
-  final BoxFit backgroundFit;
-  final Alignment backgroundAlignment;
-
-  // ✅ Overlay para legibilidad
-  final double overlayOpacity;
-
   const AuthShell({
     super.key,
     required this.titulo,
@@ -38,18 +13,33 @@ class AuthShell extends StatelessWidget {
     required this.child,
     required this.primaryText,
     required this.onPrimary,
+    this.primaryLoading = false,
     this.footer,
     this.childTop,
-
     this.showBack = false,
     this.onBack,
     this.fallbackBackRoute = '/login',
-
     this.backgroundAsset,
     this.backgroundFit = BoxFit.cover,
     this.backgroundAlignment = Alignment.center,
     this.overlayOpacity = 0.18,
   });
+
+  final String titulo;
+  final String subtitulo;
+  final Widget child;
+  final String primaryText;
+  final VoidCallback? onPrimary;
+  final bool primaryLoading;
+  final Widget? footer;
+  final Widget? childTop;
+  final bool showBack;
+  final VoidCallback? onBack;
+  final String fallbackBackRoute;
+  final String? backgroundAsset;
+  final BoxFit backgroundFit;
+  final Alignment backgroundAlignment;
+  final double overlayOpacity;
 
   void _handleBack(BuildContext context) {
     onBack?.call();
@@ -67,7 +57,6 @@ class AuthShell extends StatelessWidget {
       backgroundColor: ColoresApp.blanco,
       body: Stack(
         children: [
-          // ✅ Fondo
           if (backgroundAsset != null)
             Positioned.fill(
               child: Image.asset(
@@ -76,19 +65,15 @@ class AuthShell extends StatelessWidget {
                 alignment: backgroundAlignment,
               ),
             ),
-
-          // ✅ Overlay suave
           if (backgroundAsset != null && overlayOpacity > 0)
             Positioned.fill(
               child: Container(
-                color: ColoresApp.blanco.withOpacity(overlayOpacity),
+                color: ColoresApp.blanco.withValues(alpha: overlayOpacity),
               ),
             ),
-
           SafeArea(
             child: Stack(
               children: [
-                // ✅ Layout: logos arriba + contenido centrado
                 Column(
                   children: [
                     if (childTop != null) ...[
@@ -96,9 +81,8 @@ class AuthShell extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
                         child: childTop!,
                       ),
-                      const SizedBox(height: 8), // aire pequeño debajo del logo
+                      const SizedBox(height: 8),
                     ],
-
                     Expanded(
                       child: Center(
                         child: ConstrainedBox(
@@ -108,33 +92,31 @@ class AuthShell extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // ✅ aire por si hay back flotante
                                 SizedBox(height: showBack ? 18 : 6),
-
                                 AuthBanner(
                                   texto: titulo,
                                   leftAsset: 'assets/ornamentos/flor_d.png',
                                   rightAsset: 'assets/ornamentos/flor_i.png',
                                 ),
-
                                 const SizedBox(height: 14),
-
                                 Text(
                                   subtitulo,
                                   textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
                                         color: ColoresApp.textoSuave,
                                         fontWeight: FontWeight.w500,
                                         height: 1.35,
                                       ),
                                 ),
-
                                 const SizedBox(height: 20),
                                 child,
                                 const SizedBox(height: 18),
-
-                                AuthPrimaryButton(text: primaryText, onTap: onPrimary),
-
+                                AuthPrimaryButton(
+                                  text: primaryText,
+                                  onTap: onPrimary,
+                                  isLoading: primaryLoading,
+                                ),
                                 if (footer != null) ...[
                                   const SizedBox(height: 10),
                                   footer!,
@@ -147,8 +129,6 @@ class AuthShell extends StatelessWidget {
                     ),
                   ],
                 ),
-
-                // ✅ Back flotante
                 if (showBack)
                   Positioned(
                     left: 14,
@@ -167,8 +147,9 @@ class AuthShell extends StatelessWidget {
 }
 
 class _FloatingBackButton extends StatelessWidget {
-  final VoidCallback onTap;
   const _FloatingBackButton({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +162,7 @@ class _FloatingBackButton extends StatelessWidget {
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: ColoresApp.blanco.withOpacity(0.92),
+            color: ColoresApp.blanco.withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: const Color(0x14000000)),
             boxShadow: const [

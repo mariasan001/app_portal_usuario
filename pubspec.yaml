@@ -42,6 +42,12 @@ dependencies:
   pdf: ^3.10.8
   printing: ^5.12.0
   crypto: ^3.0.3
+  dio: ^5.9.2
+  flutter_riverpod: ^3.3.1
+  cookie_jar: ^4.0.9
+  dio_cookie_manager: ^3.4.0
+  path_provider: ^2.1.5
+  flutter_secure_storage: ^10.0.0
 
 dev_dependencies:
   flutter_test:

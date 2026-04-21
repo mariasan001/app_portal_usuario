@@ -1,19 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../../../../tema/colores.dart';
 
-class AuthTextField extends StatelessWidget {
-  final String? label;
-  final String hint;
-  final IconData icon;
-  final bool obscure;
-  final TextEditingController controller;
-
-  final TextInputType? keyboardType;
-  final TextInputAction? textInputAction;
-  final void Function(String)? onSubmitted;
-
-  final String? Function(String?)? validator;
-
+class AuthTextField extends StatefulWidget {
   const AuthTextField({
     super.key,
     this.label,
@@ -27,6 +16,34 @@ class AuthTextField extends StatelessWidget {
     this.validator,
   });
 
+  final String? label;
+  final String hint;
+  final IconData icon;
+  final bool obscure;
+  final TextEditingController controller;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final void Function(String)? onSubmitted;
+  final String? Function(String?)? validator;
+
+  @override
+  State<AuthTextField> createState() => _AuthTextFieldState();
+}
+
+class _AuthTextFieldState extends State<AuthTextField> {
+  late bool _obscureText;
+
+  @override
+  void initState() {
+    super.initState();
+    _obscureText = widget.obscure;
+  }
+
+  void _toggleObscure() {
+    if (!widget.obscure) return;
+    setState(() => _obscureText = !_obscureText);
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -34,9 +51,9 @@ class AuthTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (label != null && label!.trim().isNotEmpty) ...[
+        if (widget.label != null && widget.label!.trim().isNotEmpty) ...[
           Text(
-            label!,
+            widget.label!,
             style: t.bodySmall?.copyWith(
               color: ColoresApp.texto,
               fontWeight: FontWeight.w800,
@@ -44,12 +61,13 @@ class AuthTextField extends StatelessWidget {
           ),
           const SizedBox(height: 6),
         ],
-
         SizedBox(
-          height: 62, // ✅ reserva espacio para error sin “brinco”
+          height: 62,
           child: FormField<String>(
-            initialValue: controller.text,
-            validator: (validator == null) ? null : (_) => validator!(controller.text),
+            initialValue: widget.controller.text,
+            validator: (widget.validator == null)
+                ? null
+                : (_) => widget.validator!(widget.controller.text),
             builder: (state) {
               final hasError = state.hasError;
               final errorText = state.errorText;
@@ -64,7 +82,9 @@ class AuthTextField extends StatelessWidget {
                       color: const Color(0xFFF3F3F3),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: hasError ? ColoresApp.vino.withOpacity(0.55) : const Color(0x11000000),
+                        color: hasError
+                            ? ColoresApp.vino.withValues(alpha: 0.55)
+                            : const Color(0x11000000),
                       ),
                     ),
                     child: Row(
@@ -76,19 +96,24 @@ class AuthTextField extends StatelessWidget {
                             color: ColoresApp.vino,
                             borderRadius: BorderRadius.circular(9),
                           ),
-                          child: Icon(icon, color: ColoresApp.blanco, size: 18),
+                          child: Icon(
+                            widget.icon,
+                            color: ColoresApp.blanco,
+                            size: 18,
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: TextField(
-                            controller: controller,
-                            obscureText: obscure,
-                            keyboardType: keyboardType,
-                            textInputAction: textInputAction,
-                            onSubmitted: onSubmitted,
-                            onChanged: (_) => state.didChange(controller.text),
+                            controller: widget.controller,
+                            obscureText: _obscureText,
+                            keyboardType: widget.keyboardType,
+                            textInputAction: widget.textInputAction,
+                            onSubmitted: widget.onSubmitted,
+                            onChanged: (_) =>
+                                state.didChange(widget.controller.text),
                             decoration: InputDecoration(
-                              hintText: hint,
+                              hintText: widget.hint,
                               hintStyle: t.bodySmall?.copyWith(
                                 color: ColoresApp.textoSuave,
                                 fontWeight: FontWeight.w500,
@@ -103,12 +128,27 @@ class AuthTextField extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (widget.obscure) ...[
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: _toggleObscure,
+                            borderRadius: BorderRadius.circular(999),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(
+                                _obscureText
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                size: 18,
+                                color: ColoresApp.textoSuave,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
                   AnimatedOpacity(
                     opacity: hasError ? 1 : 0,
                     duration: const Duration(milliseconds: 160),
@@ -116,7 +156,7 @@ class AuthTextField extends StatelessWidget {
                         ? Text(
                             errorText ?? '',
                             style: t.bodySmall?.copyWith(
-                              color: ColoresApp.vino.withOpacity(0.85),
+                              color: ColoresApp.vino.withValues(alpha: 0.85),
                               fontWeight: FontWeight.w600,
                               fontSize: 11.5,
                             ),

@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../features/auth/application/auth_providers.dart';
+import '../../../../../features/auth/application/auth_state.dart';
 import '../../../../tema/colores.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/login_form.dart';
-// ...imports
-class LoginPage extends StatefulWidget {
+
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _userCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
@@ -28,19 +31,42 @@ class _LoginPageState extends State<LoginPage> {
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) return;
 
-    if (!mounted) return;
-    context.go('/home');
+    await ref
+        .read(authControllerProvider.notifier)
+        .login(
+          username: _userCtrl.text.trim(),
+          password: _passCtrl.text.trim(),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authControllerProvider, (previous, next) {
+      if (!mounted) return;
+
+      final previousError = previous?.errorMessage;
+      final nextError = next.errorMessage;
+      if (nextError != null && nextError != previousError) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(nextError)));
+        ref.read(authControllerProvider.notifier).clearFeedback();
+      }
+
+      final wasAuthenticated = previous?.isAuthenticated ?? false;
+      if (next.isAuthenticated && !wasAuthenticated) {
+        context.go('/home');
+      }
+    });
+
     final t = Theme.of(context).textTheme;
+    final authState = ref.watch(authControllerProvider);
 
     return AuthShell(
       backgroundAsset: 'assets/img/fondo.png',
       overlayOpacity: 0.10,
-
-      // ✅ Logos ahora van “hasta arriba” por el AuthShell
+      primaryLoading: authState.isLoading,
       childTop: Row(
         children: [
           Expanded(
@@ -66,22 +92,48 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ],
       ),
-
       titulo: 'Bienvenido a tu espacio\ndigital',
-      subtitulo: 'Inicia sesión para acceder a tus recibos, movimientos\ny normativas vigentes.',
+      subtitulo:
+          'Inicia sesión para acceder a tus recibos, movimientos\ny normativas vigentes.',
       primaryText: 'Entrar a mi perfil',
       onPrimary: _login,
-
-      child: LoginForm(
-        formKey: _formKey,
-        userCtrl: _userCtrl,
-        passCtrl: _passCtrl,
-        onLogin: _login,
-      ),
-
       footer: Column(
         children: [
-          // ...tu footer igual (registro, recuperar, aviso, leyenda)
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '¿Aún no tienes cuenta? ',
+                  style: t.bodySmall?.copyWith(
+                    color: ColoresApp.texto,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: InkWell(
+                    onTap: () => context.go('/registro'),
+                    borderRadius: BorderRadius.circular(999),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
+                      child: Text(
+                        'Registrarme',
+                        style: t.bodySmall?.copyWith(
+                          color: ColoresApp.vino,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
           Text(
             'Aviso de Privacidad',
             textAlign: TextAlign.center,
@@ -100,20 +152,22 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ],
       ),
+      child: LoginForm(
+        formKey: _formKey,
+        userCtrl: _userCtrl,
+        passCtrl: _passCtrl,
+        onLogin: _login,
+      ),
     );
   }
 }
 
 class _LogoBox extends StatelessWidget {
+  const _LogoBox({required this.asset, this.height = 54, this.maxWidth = 210});
+
   final String asset;
   final double height;
   final double maxWidth;
-
-  const _LogoBox({
-    required this.asset,
-    this.height = 54,
-    this.maxWidth = 210,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -121,8 +175,6 @@ class _LogoBox extends StatelessWidget {
       height: height,
       constraints: BoxConstraints(maxWidth: maxWidth),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-
-    
       child: Image.asset(
         asset,
         fit: BoxFit.contain,

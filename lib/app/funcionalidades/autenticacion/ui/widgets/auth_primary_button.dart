@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+
 import '../../../../tema/colores.dart';
 
 class AuthPrimaryButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onTap;
-
-  /// ✅ controla el ancho (ej: 240, 260, 280)
-  final double maxWidth;
-
   const AuthPrimaryButton({
     super.key,
     required this.text,
     required this.onTap,
     this.maxWidth = 260,
+    this.isLoading = false,
   });
+
+  final String text;
+  final VoidCallback? onTap;
+  final double maxWidth;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +25,7 @@ class AuthPrimaryButton extends StatelessWidget {
           width: double.infinity,
           height: 40,
           child: ElevatedButton(
-            onPressed: onTap,
+            onPressed: isLoading ? null : onTap,
             style: ElevatedButton.styleFrom(
               backgroundColor: ColoresApp.cafe,
               foregroundColor: ColoresApp.blanco,
@@ -33,13 +34,22 @@ class AuthPrimaryButton extends StatelessWidget {
               ),
               elevation: 0,
             ),
-            child: Text(
-              text,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: ColoresApp.blanco,
-                    fontWeight: FontWeight.w700,
+            child: isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    text,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: ColoresApp.blanco,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-            ),
           ),
         ),
       ),
