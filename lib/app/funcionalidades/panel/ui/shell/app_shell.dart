@@ -272,7 +272,7 @@ class AppShell extends StatelessWidget {
               avatarImage: avatar,
               onTapPerfil: () => context.go('/perfil'),
 
-              // 🔔 Notificaciones
+              // 🔔 Notificacionesiq
               notificacionesPendientes: notifsPendientes,
               showNotificationDotWhenZero: true,
               onTapNotificaciones: () => _openNotificaciones(context, demoNotifs),
