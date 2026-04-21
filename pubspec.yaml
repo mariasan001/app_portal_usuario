@@ -68,6 +68,10 @@ flutter:
       - assets/img/intro_3.png
       - assets/img/fondo.png
       - assets/img/perfil.png
+      - assets/img/escudo.png
+      - assets/img/escudo_1.png
+      - assets/img/cinta.png
+      - assets/img/escudo_2.png
       - assets/img/post/
       - assets/ornamentos/
 

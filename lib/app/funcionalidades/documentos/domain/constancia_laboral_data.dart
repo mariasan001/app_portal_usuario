@@ -1,3 +1,5 @@
+// lib/app/funcionalidades/documentos/domain/constancia_laboral_data.dart
+
 class ConstanciaLaboralData {
   final String folio;
   final String lugar;
@@ -9,12 +11,12 @@ class ConstanciaLaboralData {
 
   final String dependencia;
   final String area;
-  final String puesto;
-  final String tipoNombramiento; // Base/Confianza/Honorarios
-  final DateTime fechaIngreso;
-  final String estatusLaboral; // Activo/a, etc.
 
-  // Opcionales (para que se vea más pro y completo)
+  final String puesto;
+  final String tipoNombramiento;
+  final String estatusLaboral;
+  final DateTime fechaIngreso;
+
   final String? rfc;
   final String? nivel;
   final String? percepcionBrutaMensual;
@@ -30,8 +32,8 @@ class ConstanciaLaboralData {
     required this.area,
     required this.puesto,
     required this.tipoNombramiento,
-    required this.fechaIngreso,
     required this.estatusLaboral,
+    required this.fechaIngreso,
     this.rfc,
     this.nivel,
     this.percepcionBrutaMensual,

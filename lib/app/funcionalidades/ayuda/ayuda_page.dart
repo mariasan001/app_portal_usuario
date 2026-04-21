@@ -1,6 +1,7 @@
 // lib/app/funcionalidades/ayuda/ui/ayuda_soporte_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:portal_servicios_usuario/app/tema/colores.dart';
 
@@ -18,11 +19,22 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
   final _chatCtrl = TextEditingController();
   final _scroll = ScrollController();
 
+  bool _botTyping = false;
+
   late final List<_FaqItem> _faqs = _buildFaqs();
   late final List<_ChatMsg> _msgs = [
     _ChatMsg.bot(
-      'Hola 👋 Soy el asistente del portal.\n'
-      'Puedo ayudarte con trámites, documentos, recibos, citas, acceso y normativas.',
+      text:
+          'Hola 👋 Soy el asistente del portal.\n'
+          'Puedo ayudarte con trámites, documentos, recibos, citas, acceso y normativas.',
+      actions: [
+        _ChatAction.quick('Trámites', icon: PhosphorIcons.fileText(PhosphorIconsStyle.light), intent: _Intent.tramites),
+        _ChatAction.quick('Documentos', icon: PhosphorIcons.folderOpen(PhosphorIconsStyle.light), intent: _Intent.documentos),
+        _ChatAction.quick('Recibos', icon: PhosphorIcons.receipt(PhosphorIconsStyle.light), intent: _Intent.recibos),
+        _ChatAction.quick('Citas', icon: PhosphorIcons.calendarBlank(PhosphorIconsStyle.light), intent: _Intent.citas),
+        _ChatAction.quick('Acceso', icon: PhosphorIcons.key(PhosphorIconsStyle.light), intent: _Intent.acceso),
+        _ChatAction.quick('Soporte', icon: PhosphorIcons.headset(PhosphorIconsStyle.light), intent: _Intent.soporte),
+      ],
     ),
   ];
 
@@ -32,6 +44,8 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
     _scroll.dispose();
     super.dispose();
   }
+
+  // ======================= FAQ =======================
 
   List<_FaqItem> _buildFaqs() {
     return [
@@ -58,7 +72,6 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
         respuesta:
             'El portal maneja sesión y permisos por usuario. Si detectas algo raro, cierra sesión y reporta al soporte.',
       ),
-
       _FaqItem(
         tema: _FaqTema.tramites,
         icon: PhosphorIcons.fileText(PhosphorIconsStyle.light),
@@ -71,8 +84,7 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
         tema: _FaqTema.tramites,
         icon: PhosphorIcons.clock(PhosphorIconsStyle.light),
         pregunta: '¿Puedo consultar mis trámites anteriores o en proceso?',
-        respuesta:
-            'Sí. En “Trámites” verás historial, estatus y fechas. Si hay folio, úsalo para seguimiento.',
+        respuesta: 'Sí. En “Trámites” verás historial, estatus y fechas. Si hay folio, úsalo para seguimiento.',
       ),
       _FaqItem(
         tema: _FaqTema.tramites,
@@ -82,7 +94,6 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
             'Pendiente suele ser validación o falta de información. Vencido indica expiración de vigencia/plazo. '
             'Abre el detalle para ver motivo y pasos.',
       ),
-
       _FaqItem(
         tema: _FaqTema.documentos,
         icon: PhosphorIcons.folderOpen(PhosphorIconsStyle.light),
@@ -97,7 +108,6 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
         respuesta:
             'En “Mis documentos” abre el documento y usa descarga. Si no aparece, puede estar en generación o requerir permisos.',
       ),
-
       _FaqItem(
         tema: _FaqTema.normativas,
         icon: PhosphorIcons.bookOpenText(PhosphorIconsStyle.light),
@@ -105,7 +115,6 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
         respuesta:
             'En la sección correspondiente del servicio (detalle) o dentro de documentos. Cuando haya repositorio oficial, se mostrará enlace directo.',
       ),
-
       _FaqItem(
         tema: _FaqTema.soporte,
         icon: PhosphorIcons.headset(PhosphorIconsStyle.light),
@@ -117,61 +126,199 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
         tema: _FaqTema.soporte,
         icon: PhosphorIcons.bugBeetle(PhosphorIconsStyle.light),
         pregunta: '¿Qué hago si el portal falla o se cierra?',
-        respuesta:
-            'Cierra sesión e inicia nuevamente. Si persiste, reporta: pantalla, pasos realizados y captura (si puedes).',
+        respuesta: 'Cierra sesión e inicia nuevamente. Si persiste, reporta: pantalla, pasos realizados y captura (si puedes).',
       ),
     ];
   }
 
-  List<_FaqItem> get _filteredFaqs =>
-      _faqs.where((f) => f.tema == _tema).toList(growable: false);
+  List<_FaqItem> get _filteredFaqs => _faqs.where((f) => f.tema == _tema).toList(growable: false);
 
-  // ---------------- Chat DEMO ----------------
+  // ======================= CHAT PRO =======================
 
   void _sendChat(String text) {
     final msg = text.trim();
     if (msg.isEmpty) return;
 
+    HapticFeedback.selectionClick();
     setState(() => _msgs.add(_ChatMsg.user(msg)));
     _chatCtrl.clear();
     _scrollToBottom();
 
-    final bot = _botReply(msg);
-    Future.delayed(const Duration(milliseconds: 220), () {
+    _replyBot(msg);
+  }
+
+  void _onBotQuickAction(_ChatAction a) {
+    // Acción rápida: o navega o responde con intención
+    if (a.route != null) {
+      _safeNav(a.route!);
+      return;
+    }
+    if (a.intent != null) {
+      _replyBot('', forcedIntent: a.intent);
+    }
+  }
+
+  void _replyBot(String input, { _Intent? forcedIntent }) {
+    setState(() => _botTyping = true);
+    _scrollToBottom();
+
+    final ans = _botAnswer(input, forcedIntent: forcedIntent);
+
+    Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
-      setState(() => _msgs.add(_ChatMsg.bot(bot)));
+      setState(() {
+        _botTyping = false;
+        _msgs.add(_ChatMsg.bot(text: ans.text, actions: ans.actions));
+      });
       _scrollToBottom();
     });
   }
 
-  String _botReply(String input) {
+  _BotAnswer _botAnswer(String input, { _Intent? forcedIntent }) {
     final s = input.toLowerCase();
+    final intent = forcedIntent ?? _detectIntent(s);
 
-    if (s.contains('tramite') || s.contains('trámite')) {
-      return 'Para trámites: entra a “Servicios”, selecciona el trámite y confirma.\n'
-          'Si ya lo iniciaste, ve a “Trámites” para estatus. ¿Cuál trámite es?';
-    }
-    if (s.contains('documento') || s.contains('constancia') || s.contains('vigencia')) {
-      return 'En “Mis documentos” verás constancias y vigencias.\n'
-          'Si está “Pendiente”, puede estar en validación/generación.\n'
-          'Dime el nombre del documento y te digo qué revisar.';
-    }
-    if (s.contains('recibo') || s.contains('nomina') || s.contains('nómina')) {
-      return 'Para recibos: entra a “Recibos”.\n'
-          'Si falta uno, puede estar en carga. ¿Qué quincena/periodo buscas?';
-    }
-    if (s.contains('norma') || s.contains('lineamiento') || s.contains('regla')) {
-      return 'Las normativas vigentes suelen estar en el detalle del servicio o en documentos.\n'
-          'Dime el tema y te ubico dónde aparece.';
-    }
-    if (s.contains('login') || s.contains('sesion') || s.contains('sesión') || s.contains('acceso')) {
-      return 'Si hay problemas de acceso: valida usuario/contraseña, revisa conexión y reintenta.\n'
-          'Si usas token/código, confirma que sea el más reciente. ¿Qué error te sale?';
-    }
+    switch (intent) {
+      case _Intent.tramites:
+        return _BotAnswer(
+          text:
+              'Perfecto ✅ Trámites.\n'
+              '1) Ve a “Servicios” para iniciar uno nuevo.\n'
+              '2) Ve a “Trámites” para ver estatus/historial.\n'
+              'Si me dices el trámite y el estatus (Pendiente/Vencido/En proceso), te digo el siguiente paso.',
+          actions: [
+            _ChatAction.nav('Ir a Servicios', icon: PhosphorIcons.gridFour(PhosphorIconsStyle.light), route: _Routes.servicios),
+            _ChatAction.nav('Ver mis Trámites', icon: PhosphorIcons.fileText(PhosphorIconsStyle.light), route: _Routes.tramites),
+            _ChatAction.nav('Levantar reporte', icon: PhosphorIcons.headset(PhosphorIconsStyle.light), route: _Routes.reporteSoporte),
+          ],
+        );
 
-    return 'Entendido ✅\n'
-        'Dime si es sobre: trámites, documentos, recibos, citas, acceso o normativas.\n'
-        'Si puedes, pega el texto del error o describe la pantalla.';
+      case _Intent.documentos:
+        return _BotAnswer(
+          text:
+              'Va ✅ Documentos.\n'
+              'En “Mis documentos” puedes ver constancias y vigencias.\n'
+              'Si un documento no aparece: puede estar en generación, sin permisos o con periodo incorrecto.\n'
+              'Dime el nombre del documento y el periodo que buscas.',
+          actions: [
+            _ChatAction.nav('Ir a Documentos', icon: PhosphorIcons.folderOpen(PhosphorIconsStyle.light), route: _Routes.documentos),
+            _ChatAction.nav('Abrir Recibos', icon: PhosphorIcons.receipt(PhosphorIconsStyle.light), route: _Routes.recibos),
+            _ChatAction.nav('Levantar reporte', icon: PhosphorIcons.headset(PhosphorIconsStyle.light), route: _Routes.reporteSoporte),
+          ],
+        );
+
+      case _Intent.recibos:
+        return _BotAnswer(
+          text:
+              'Recibos 💳\n'
+              'Entra a “Recibos” y filtra por periodo/quincena.\n'
+              'Si falta uno, puede estar en carga o no disponible aún.\n'
+              '¿Qué quincena/mes necesitas?',
+          actions: [
+            _ChatAction.nav('Ir a Recibos', icon: PhosphorIcons.receipt(PhosphorIconsStyle.light), route: _Routes.recibos),
+            _ChatAction.nav('Levantar reporte', icon: PhosphorIcons.headset(PhosphorIconsStyle.light), route: _Routes.reporteSoporte),
+          ],
+        );
+
+      case _Intent.citas:
+        return _BotAnswer(
+          text:
+              'Citas 📅\n'
+              'Puedes consultar tus citas desde “Citas” (o dentro del servicio relacionado).\n'
+              'Si quieres reagendar, dime si es Trámite o Consulta y la fecha.',
+          actions: [
+            _ChatAction.nav('Ir a Citas', icon: PhosphorIcons.calendarBlank(PhosphorIconsStyle.light), route: _Routes.citas),
+            _ChatAction.nav('Ir a Servicios', icon: PhosphorIcons.gridFour(PhosphorIconsStyle.light), route: _Routes.servicios),
+          ],
+        );
+
+      case _Intent.acceso:
+        return _BotAnswer(
+          text:
+              'Acceso 🔐\n'
+              'Si no puedes iniciar sesión:\n'
+              '• Revisa usuario/contraseña.\n'
+              '• Valida conexión.\n'
+              '• Si usas código/token, usa el más reciente.\n'
+              '¿Qué mensaje de error te muestra?',
+          actions: [
+            _ChatAction.nav('Ir a Perfil', icon: PhosphorIcons.userCircle(PhosphorIconsStyle.light), route: _Routes.perfil),
+            _ChatAction.nav('Levantar reporte', icon: PhosphorIcons.headset(PhosphorIconsStyle.light), route: _Routes.reporteSoporte),
+          ],
+        );
+
+      case _Intent.normativas:
+        return _BotAnswer(
+          text:
+              'Normativas 📚\n'
+              'Normalmente aparecen en el detalle del servicio o dentro de documentos.\n'
+              'Dime el tema (ej. escalafón, constancias, descuentos, etc.) y te digo dónde verlo.',
+          actions: [
+            _ChatAction.nav('Ir a Servicios', icon: PhosphorIcons.gridFour(PhosphorIconsStyle.light), route: _Routes.servicios),
+            _ChatAction.nav('Ir a Documentos', icon: PhosphorIcons.folderOpen(PhosphorIconsStyle.light), route: _Routes.documentos),
+          ],
+        );
+
+      case _Intent.soporte:
+        final looksLikeError = s.contains('error') || s.contains('exception') || s.contains('fall') || s.contains('crash');
+
+        return _BotAnswer(
+          text: looksLikeError
+              ? 'Ok, eso suena a error 🐛\n'
+                'Pásame:\n'
+                '1) Pantalla donde ocurre\n'
+                '2) Pasos para reproducir\n'
+                '3) Texto del error (o captura)\n'
+                'Y lo convertimos en reporte de soporte.'
+              : 'Soporte ✅\n'
+                'Si algo no cuadra (trámite, documento, recibo, acceso), podemos levantar un reporte.\n'
+                '¿Qué módulo es y qué estabas intentando hacer?',
+          actions: [
+            _ChatAction.nav('Levantar reporte', icon: PhosphorIcons.headset(PhosphorIconsStyle.light), route: _Routes.reporteSoporte),
+            _ChatAction.quick('Trámites', icon: PhosphorIcons.fileText(PhosphorIconsStyle.light), intent: _Intent.tramites),
+            _ChatAction.quick('Documentos', icon: PhosphorIcons.folderOpen(PhosphorIconsStyle.light), intent: _Intent.documentos),
+          ],
+        );
+
+      case _Intent.general:
+        return _BotAnswer(
+          text:
+              'Entendido ✅\n'
+              'Dime si es sobre: trámites, documentos, recibos, citas, acceso o normativas.\n'
+              'Si puedes, pega el texto del error o describe la pantalla.',
+          actions: [
+            _ChatAction.quick('Trámites', icon: PhosphorIcons.fileText(PhosphorIconsStyle.light), intent: _Intent.tramites),
+            _ChatAction.quick('Documentos', icon: PhosphorIcons.folderOpen(PhosphorIconsStyle.light), intent: _Intent.documentos),
+            _ChatAction.quick('Recibos', icon: PhosphorIcons.receipt(PhosphorIconsStyle.light), intent: _Intent.recibos),
+            _ChatAction.quick('Acceso', icon: PhosphorIcons.key(PhosphorIconsStyle.light), intent: _Intent.acceso),
+          ],
+        );
+    }
+  }
+
+  _Intent _detectIntent(String s) {
+    bool hasAny(List<String> k) => k.any((x) => s.contains(x));
+
+    if (hasAny(['trámite', 'tramite', 'folio', 'pendiente', 'vencid', 'estatus'])) return _Intent.tramites;
+    if (hasAny(['documento', 'constancia', 'vigencia', 'pdf', 'firma'])) return _Intent.documentos;
+    if (hasAny(['recibo', 'nómina', 'nomina', 'quincena', 'pago'])) return _Intent.recibos;
+    if (hasAny(['cita', 'reagendar', 'agenda', 'calendario'])) return _Intent.citas;
+    if (hasAny(['login', 'sesión', 'sesion', 'acceso', 'token', 'contraseña', 'password'])) return _Intent.acceso;
+    if (hasAny(['norma', 'lineamiento', 'regla', 'normativa'])) return _Intent.normativas;
+    if (hasAny(['soporte', 'error', 'bug', 'fall', 'crash', 'report'])) return _Intent.soporte;
+
+    return _Intent.general;
+  }
+
+  void _safeNav(String route) {
+    HapticFeedback.selectionClick();
+    try {
+      Navigator.of(context).pushNamed(route);
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ruta no configurada: $route 😅')),
+      );
+    }
   }
 
   void _scrollToBottom() {
@@ -185,7 +332,7 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
     });
   }
 
-  // ---------------- UI ----------------
+  // ======================= UI =======================
 
   @override
   Widget build(BuildContext context) {
@@ -200,7 +347,7 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ✅ HEADER “INTOCABLE”: línea café a un lado + título
+              // ✅ HEADER “INTOCABLE”
               Row(
                 children: [
                   Container(
@@ -226,7 +373,6 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
 
               const SizedBox(height: 12),
 
-              // Tabs
               _AyudaTabs(
                 value: _tab,
                 onChanged: (v) => setState(() => _tab = v),
@@ -256,7 +402,6 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Temas
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           physics: const BouncingScrollPhysics(),
@@ -294,8 +439,6 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, i) {
                     final item = items[i];
-
-                    // ✅ acento suave por tema (cero “botón negro”)
                     final Color accent = switch (item.tema) {
                       _FaqTema.tramites => ColoresApp.vino,
                       _FaqTema.documentos => ColoresApp.dorado,
@@ -303,11 +446,7 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
                       _FaqTema.soporte => ColoresApp.vino.withOpacity(0.85),
                       _FaqTema.portal => ColoresApp.dorado.withOpacity(0.85),
                     };
-
-                    return _FaqAccordionCool(
-                      item: item,
-                      accent: accent,
-                    );
+                    return _FaqAccordionCool(item: item, accent: accent);
                   },
                 ),
         ),
@@ -322,9 +461,17 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
           child: ListView.separated(
             controller: _scroll,
             physics: const BouncingScrollPhysics(),
-            itemCount: _msgs.length,
+            itemCount: _msgs.length + (_botTyping ? 1 : 0),
             separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, i) => _ChatBubble(msg: _msgs[i]),
+            itemBuilder: (context, i) {
+              if (_botTyping && i == _msgs.length) {
+                return const _TypingBubble();
+              }
+              return _ChatBubble(
+                msg: _msgs[i],
+                onAction: _onBotQuickAction,
+              );
+            },
           ),
         ),
         const SizedBox(height: 10),
@@ -338,6 +485,7 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
               _QuickPrompt(text: 'No veo mi recibo', onTap: () => _sendChat('No veo mi recibo de nómina')),
               _QuickPrompt(text: 'Constancias y vigencias', onTap: () => _sendChat('Necesito una constancia vigente')),
               _QuickPrompt(text: 'Normativas', onTap: () => _sendChat('¿Dónde encuentro normativas vigentes?')),
+              _QuickPrompt(text: 'Levantar reporte', onTap: () => _replyBot('Soporte', forcedIntent: _Intent.soporte)),
             ],
           ),
         ),
@@ -351,6 +499,64 @@ class _AyudaSoportePageState extends State<AyudaSoportePage> {
       ],
     );
   }
+}
+
+/* =======================================================================
+  ROUTES (AJUSTA A TU APP)
+======================================================================= */
+
+class _Routes {
+  static const servicios = '/servicios';
+  static const tramites = '/tramites';
+  static const documentos = '/documentos';
+  static const recibos = '/recibos';
+  static const citas = '/citas';
+  static const perfil = '/perfil';
+  static const reporteSoporte = '/soporte/reporte'; // ← cámbiala si tu ruta es otra
+}
+
+/* =======================================================================
+  MODELOS CHAT PRO
+======================================================================= */
+
+enum _Intent { general, tramites, documentos, recibos, citas, acceso, normativas, soporte }
+
+class _BotAnswer {
+  final String text;
+  final List<_ChatAction> actions;
+  _BotAnswer({required this.text, this.actions = const []});
+}
+
+class _ChatAction {
+  final String label;
+  final IconData icon;
+  final String? route;
+  final _Intent? intent;
+
+  const _ChatAction._({
+    required this.label,
+    required this.icon,
+    this.route,
+    this.intent,
+  });
+
+  factory _ChatAction.nav(String label, {required IconData icon, required String route}) =>
+      _ChatAction._(label: label, icon: icon, route: route);
+
+  factory _ChatAction.quick(String label, {required IconData icon, required _Intent intent}) =>
+      _ChatAction._(label: label, icon: icon, intent: intent);
+}
+
+class _ChatMsg {
+  final bool isUser;
+  final String text;
+  final List<_ChatAction> actions;
+
+  _ChatMsg._(this.isUser, this.text, this.actions);
+
+  factory _ChatMsg.user(String t) => _ChatMsg._(true, t, const []);
+  factory _ChatMsg.bot({required String text, List<_ChatAction> actions = const []}) =>
+      _ChatMsg._(false, text, actions);
 }
 
 /* =======================================================================
@@ -534,11 +740,6 @@ class _SoftChip extends StatelessWidget {
   }
 }
 
-/// ✅ Accordion más “cool”:
-/// - Animación suave (AnimatedSize)
-/// - Borde/acento cuando abre
-/// - Icono rota
-/// - Respuesta en panel separado con fondo suave
 class _FaqAccordionCool extends StatefulWidget {
   final _FaqItem item;
   final Color accent;
@@ -552,8 +753,7 @@ class _FaqAccordionCool extends StatefulWidget {
   State<_FaqAccordionCool> createState() => _FaqAccordionCoolState();
 }
 
-class _FaqAccordionCoolState extends State<_FaqAccordionCool>
-    with SingleTickerProviderStateMixin {
+class _FaqAccordionCoolState extends State<_FaqAccordionCool> {
   bool _open = false;
 
   @override
@@ -580,7 +780,6 @@ class _FaqAccordionCoolState extends State<_FaqAccordionCool>
             children: [
               Row(
                 children: [
-                  // Icono con acento (bonito y sin exceso de color)
                   Container(
                     width: 42,
                     height: 42,
@@ -592,7 +791,6 @@ class _FaqAccordionCoolState extends State<_FaqAccordionCool>
                     child: Icon(widget.item.icon, size: 20, color: accent),
                   ),
                   const SizedBox(width: 10),
-
                   Expanded(
                     child: Text(
                       widget.item.pregunta,
@@ -605,10 +803,7 @@ class _FaqAccordionCoolState extends State<_FaqAccordionCool>
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 8),
-
-                  // Flecha rota (micro-interacción)
                   AnimatedRotation(
                     duration: const Duration(milliseconds: 170),
                     curve: Curves.easeOut,
@@ -621,8 +816,6 @@ class _FaqAccordionCoolState extends State<_FaqAccordionCool>
                   ),
                 ],
               ),
-
-              // Respuesta con animación suave
               AnimatedSize(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOut,
@@ -641,7 +834,6 @@ class _FaqAccordionCoolState extends State<_FaqAccordionCool>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // mini línea acento dentro del panel (muy pro)
                               Container(
                                 width: 34,
                                 height: 2,
@@ -675,34 +867,49 @@ class _FaqAccordionCoolState extends State<_FaqAccordionCool>
 }
 
 /* =======================================================================
-  CHAT
+  CHAT UI
 ======================================================================= */
 
-class _ChatMsg {
-  final bool isUser;
-  final String text;
+class _TypingBubble extends StatelessWidget {
+  const _TypingBubble();
 
-  _ChatMsg._(this.isUser, this.text);
-
-  factory _ChatMsg.user(String t) => _ChatMsg._(true, t);
-  factory _ChatMsg.bot(String t) => _ChatMsg._(false, t);
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        decoration: BoxDecoration(
+          color: ColoresApp.inputBg.withOpacity(0.75),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: ColoresApp.bordeSuave),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(width: 10),
+            Text('Escribiendo…'),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ChatBubble extends StatelessWidget {
   final _ChatMsg msg;
-  const _ChatBubble({required this.msg});
+  final void Function(_ChatAction) onAction;
+
+  const _ChatBubble({required this.msg, required this.onAction});
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
 
-    final bg = msg.isUser
-        ? ColoresApp.vino.withOpacity(0.10)
-        : ColoresApp.inputBg.withOpacity(0.75);
+    final bg = msg.isUser ? ColoresApp.vino.withOpacity(0.10) : ColoresApp.inputBg.withOpacity(0.75);
 
-    final bd = msg.isUser
-        ? ColoresApp.vino.withOpacity(0.22)
-        : ColoresApp.bordeSuave;
+    final bd = msg.isUser ? ColoresApp.vino.withOpacity(0.22) : ColoresApp.bordeSuave;
 
     final align = msg.isUser ? Alignment.centerRight : Alignment.centerLeft;
 
@@ -716,14 +923,59 @@ class _ChatBubble extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: bd),
         ),
-        child: Text(
-          msg.text,
-          style: t.bodySmall?.copyWith(
-            fontSize: 12.0,
-            height: 1.3,
-            fontWeight: FontWeight.w600,
-            color: ColoresApp.texto,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              msg.text,
+              style: t.bodySmall?.copyWith(
+                fontSize: 12.0,
+                height: 1.3,
+                fontWeight: FontWeight.w600,
+                color: ColoresApp.texto,
+              ),
+            ),
+            if (!msg.isUser && msg.actions.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: msg.actions.map((a) {
+                  return Material(
+                    color: ColoresApp.blanco,
+                    borderRadius: BorderRadius.circular(999),
+                    child: InkWell(
+                      onTap: () => onAction(a),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: ColoresApp.bordeSuave),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(a.icon, size: 16, color: ColoresApp.texto),
+                            const SizedBox(width: 8),
+                            Text(
+                              a.label,
+                              style: t.labelMedium?.copyWith(
+                                fontSize: 11.2,
+                                fontWeight: FontWeight.w900,
+                                color: ColoresApp.texto,
+                                letterSpacing: 0.1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
         ),
       ),
     );

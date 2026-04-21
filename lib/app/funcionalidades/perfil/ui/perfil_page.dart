@@ -1,3 +1,10 @@
+/**
+ * NOTA (NUEVO):
+ * - Para evitar rechazos o retrasos, el usuario puede verificar/actualizar su información fiscal.
+ * - Instrucción: entrar a "Actualización", capturar el número de servidor y validar si todo está bien
+ *   o si requiere actualización.
+ */
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -54,6 +61,21 @@ class _PerfilPageState extends State<PerfilPage> {
     );
   }
 
+  Future<void> _goActualizacion() async {
+    HapticFeedback.selectionClick();
+    try {
+      // ✅ Ajusta la ruta a como la tengas en tu app (GoRouter / Navigator)
+      Navigator.of(context).pushNamed('/actualizacion');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Aún no existe la ruta de "Actualización" 😅 (configúrala y listo)'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -86,7 +108,6 @@ class _PerfilPageState extends State<PerfilPage> {
                       ),
                     ),
                     const SizedBox(width: 12),
-
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,13 +134,123 @@ class _PerfilPageState extends State<PerfilPage> {
                         ],
                       ),
                     ),
-
                     _Pill(
                       text: 'Verificado',
                       icon: PhosphorIcons.sealCheck(PhosphorIconsStyle.fill),
                       fg: ColoresApp.cafe,
                       bg: ColoresApp.cafe.withOpacity(0.10),
                       bd: ColoresApp.cafe.withOpacity(0.18),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ✅ NUEVO: Nota de verificación/actualización fiscal (SIN tocar lo demás)
+            _SectionCard(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: ColoresApp.inputBg,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: ColoresApp.bordeSuave),
+                          ),
+                          child: Icon(
+                            PhosphorIcons.shieldCheck(PhosphorIconsStyle.light),
+                            size: 18,
+                            color: ColoresApp.textoSuave,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Mantén tu información al día',
+                                style: t.bodyMedium?.copyWith(
+                                  fontSize: 12.8,
+                                  fontWeight: FontWeight.w900,
+                                  color: ColoresApp.texto,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Para evitar rechazos o retrasos, puedes verificar si tu situación fiscal está correcta y si tus datos requieren actualización.',
+                                style: t.bodySmall?.copyWith(
+                                  fontSize: 11.3,
+                                  fontWeight: FontWeight.w700,
+                                  color: ColoresApp.textoSuave,
+                                  height: 1.25,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              _BulletText(
+                                text: 'Entra a “Actualización”.',
+                                style: t.bodySmall?.copyWith(
+                                  fontSize: 11.2,
+                                  fontWeight: FontWeight.w700,
+                                  color: ColoresApp.texto,
+                                ),
+                              ),
+                              _BulletText(
+                                text: 'Captura tu número de servidor público.',
+                                style: t.bodySmall?.copyWith(
+                                  fontSize: 11.2,
+                                  fontWeight: FontWeight.w700,
+                                  color: ColoresApp.texto,
+                                ),
+                              ),
+                              _BulletText(
+                                text: 'El sistema te dirá si todo está bien o si necesitas actualizar algo.',
+                                style: t.bodySmall?.copyWith(
+                                  fontSize: 11.2,
+                                  fontWeight: FontWeight.w700,
+                                  color: ColoresApp.texto,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _goActualizacion,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ColoresApp.vino,
+                          side: BorderSide(color: ColoresApp.vino.withOpacity(0.35)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          backgroundColor: ColoresApp.vino.withOpacity(0.06),
+                        ),
+                        icon: Icon(
+                          PhosphorIcons.arrowSquareOut(PhosphorIconsStyle.light),
+                          size: 18,
+                        ),
+                        label: Text(
+                          'Ir a Actualización',
+                          style: t.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -499,6 +630,29 @@ class _Input extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _BulletText extends StatelessWidget {
+  final String text;
+  final TextStyle? style;
+  const _BulletText({required this.text, this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 5),
+            child: Text('• '),
+          ),
+          Expanded(child: Text(text, style: style)),
+        ],
+      ),
     );
   }
 }

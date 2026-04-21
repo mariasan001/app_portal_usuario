@@ -1,16 +1,19 @@
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/documentos/domain/constancia_laboral_data.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/documentos/service/documento_pdf_service.dart';
-import 'package:portal_servicios_usuario/app/tema/colores.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/documentos/ui/pages/DocumentoPdfPreview.dart';
 import 'package:printing/printing.dart';
+import 'package:portal_servicios_usuario/app/tema/colores.dart';
+
+import 'package:portal_servicios_usuario/app/funcionalidades/documentos/service/documento_pdf_service.dart';
 
 import '../../data/documentos_mock.dart';
 import '../../domain/documento_item.dart';
 import '../../domain/firma_evidencia.dart';
+import '../../domain/constancia_laboral_data.dart';
 
 class DocumentoDetallePage extends StatefulWidget {
   final String documentoId;
@@ -24,9 +27,10 @@ class _DocumentoDetallePageState extends State<DocumentoDetallePage> {
   DocumentoItem? _doc;
   late FirmaEvidencia _ev;
 
-  late Future<Uint8List> _pdfFuture;
-  late Future<Uint8List> _thumbFuture;
-  late Future<_PdfMeta> _metaFuture;
+  Future<Uint8List>? _pdfFuture; // ✅ cache del PDF
+
+  // ✅ mientras no venga evidencia real del backend, dejamos demo encendido
+  static const bool _demoModeEvidencia = true;
 
   DocumentoItem? _findDoc() {
     try {
@@ -36,119 +40,196 @@ class _DocumentoDetallePageState extends State<DocumentoDetallePage> {
     }
   }
 
+  // ✅ demo de firma (cuando venga real, reemplazas)
   FirmaEvidencia _demoFirma(DocumentoItem doc) {
+    final seed = _seedFrom('${doc.id}|SeguriSign|54151816');
+    final rng = Random(seed);
+
+    final serial = _hex(rng, bytes: 8).padLeft(20, '0'); // más “certificado”
+    final datosEstamp = _hex(rng, bytes: 24).toUpperCase();
+    final alg = 'SHA1/RSA_ENCRYPTION';
+
+    // fecha demo (12 min atrás)
+    final sello = DateTime.now().subtract(const Duration(minutes: 12));
+
+    final ocsp = [
+      'Nombre del respondedor: OCSP DEL GOBIERNO DEL ESTADO DE MÉXICO',
+      'Emisor del respondedor: AUTORIDAD CERTIFICADORA DEL GOBIERNO DEL ESTADO DE MÉXICO',
+      'Número de serie: $serial',
+      'Fecha (UTC / Local): ${_formatUtcLocalLine(sello)}',
+      'Algoritmo: $alg',
+      'Revocación: No revocado',
+    ].join('\n');
+
+    final tsp = [
+      'Nombre del respondedor: RESPONDEDOR TSP DEL GOBIERNO DEL ESTADO DE MÉXICO',
+      'Emisor del respondedor: AUTORIDAD CERTIFICADORA DEL GOBIERNO DEL ESTADO DE MÉXICO',
+      'Secuencia: ${22200000 + rng.nextInt(900000)}',
+      'Fecha (UTC / Local): ${_formatUtcLocalLine(sello)}',
+      'Datos estampillados: $datosEstamp',
+      'Status: Válida',
+    ].join('\n');
+
+    // hash demo (sha256 = 64 hex)
+    final hash = _hex(rng, bytes: 32).toLowerCase();
+
     return FirmaEvidencia(
       proveedor: 'SeguriSign',
       archivoFirmado: '${doc.id}.pdf',
       secuencia: '54151816',
       autoridadCertificadora: 'AUTORIDAD CERTIFICADORA DEL GOBIERNO DEL ESTADO DE MÉXICO',
-      ocsp: 'GOOD · Respuesta válida',
-      tsp: 'Timestamp aplicado',
-      selloTiempo: DateTime.now().subtract(const Duration(minutes: 12)),
+      ocsp: ocsp,
+      tsp: tsp,
+      selloTiempo: sello,
+      hashSha256: hash,
       urlVerificacion: 'https://segurisign.demo/verificar/${doc.id}',
     );
   }
 
-  Map<String, String> _toMapEvidencia(DocumentoItem doc, FirmaEvidencia ev) {
-    return {
-      'Evidencia criptográfica': 'Transacción ${ev.proveedor}',
+  Future<Uint8List> _buildPdfBytes(DocumentoItem doc, FirmaEvidencia ev) async {
+    final escudoBytes =
+        (await rootBundle.load('assets/img/escudo.png')).buffer.asUint8List();
+
+    final colegioBytes =
+        (await rootBundle.load('assets/img/escudo_1.png')).buffer.asUint8List();
+
+    final cintaBytes =
+        (await rootBundle.load('assets/img/cinta.png')).buffer.asUint8List();
+
+    final data = ConstanciaLaboralData(
+      folio: 'CNL-${doc.id.toUpperCase()}',
+      lugar: 'Toluca, Estado de México',
+      fechaEmision: DateTime.now(),
+      nombre: 'MARIA FERNANDA SAGM',
+      numeroServidor: '123456',
+      curp: 'SAGM001101MDFRXXX0',
+      dependencia: 'Gobierno del Estado de México',
+      area: 'Dirección General de Personal',
+      puesto: 'Analista de Sistemas',
+      tipoNombramiento: 'Confianza',
+      fechaIngreso: DateTime(2022, 3, 1),
+      estatusLaboral: 'Activo/a',
+      rfc: 'SAGM001101XXX',
+      nivel: 'N-12',
+      percepcionBrutaMensual: '\$32,450.00 MXN',
+    );
+
+    return DocumentoPdfService.buildConstanciaLaboralPdf(
+      doc: doc,
+      evidencia: ev,
+      data: data,
+      escudoBytes: escudoBytes,
+      colegioBytes: colegioBytes,
+      cintaBytes: cintaBytes,
+    );
+  }
+
+  // ✅ PRO: evidencia para UI (con algoritmo/serie/cadena/datos estampillados)
+  Map<String, String> _toMapEvidencia(
+    FirmaEvidencia ev, {
+    required DocumentoItem doc,
+    bool demoMode = false,
+  }) {
+    String? clean(String? s) {
+      if (s == null) return null;
+      final t = s.trim();
+      if (t.isEmpty) return null;
+      final low = t.toLowerCase();
+      if (low == 'n/d' || low == 'nd' || low == 'n/a' || low == 'na') return null;
+      return t;
+    }
+
+    // parse kv from ocsp/tsp
+    List<MapEntry<String, String>> parseKv(String raw) {
+      final r = clean(raw) ?? '';
+      if (r.isEmpty) return const [];
+      final lines = r
+          .replaceAll('\r', '\n')
+          .split('\n')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+
+      final out = <MapEntry<String, String>>[];
+      for (final ln in lines) {
+        final idx = ln.indexOf(':');
+        if (idx > 0 && idx < ln.length - 1) {
+          out.add(
+            MapEntry(
+              ln.substring(0, idx).trim(),
+              ln.substring(idx + 1).trim(),
+            ),
+          );
+        }
+      }
+      return out;
+    }
+
+    String? findKv(List<MapEntry<String, String>> kv, List<String> keys) {
+      for (final it in kv) {
+        final k = it.key.toLowerCase();
+        for (final s in keys) {
+          if (k.contains(s)) return clean(it.value);
+        }
+      }
+      return null;
+    }
+
+    final ocspKv = parseKv(ev.ocsp ?? '');
+    final tspKv = parseKv(ev.tsp ?? '');
+
+    // seed determinístico por doc + secuencia
+    final seed = _seedFrom('${doc.id}|${ev.secuencia}|${ev.proveedor}|${ev.archivoFirmado}');
+    final rng = Random(seed);
+
+    final serie = findKv(ocspKv, ['número de serie', 'numero de serie', '# serie', 'serie']) ??
+        findKv(tspKv, ['número de serie', 'numero de serie', '# serie', 'serie']) ??
+        (demoMode ? _hex(rng, bytes: 8).padLeft(20, '0') : null);
+
+    final algoritmo = findKv(ocspKv, ['algoritmo']) ??
+        findKv(tspKv, ['algoritmo']) ??
+        (demoMode ? 'SHA1/RSA_ENCRYPTION' : null);
+
+    // cadena de firma (si no viene, la inventamos demostrativa)
+final raw = demoMode ? _hex(rng, bytes: 160).toUpperCase() : null;
+final cadena = raw != null ? '0x$raw' : null;
+    // datos estampillados
+    final datosEstamp = findKv(tspKv, ['datos estampillados', 'datos', 'stamped', 'stamp']) ??
+        (demoMode ? _hex(rng, bytes: 24).toUpperCase() : null);
+
+    final sello = ev.selloTiempo;
+    final selloStr = (sello != null) ? _formatUtcLocalLine(sello) : null;
+
+    // “estados” tipo reporte
+    final validezOk = clean(ev.hashSha256) != null;
+    final revOk = clean(ev.ocsp) != null;
+    final tspOk = clean(ev.tsp) != null;
+
+    final map = <String, String>{
+      'Proveedor': ev.proveedor,
       'Archivo firmado': ev.archivoFirmado,
       'Secuencia': ev.secuencia,
-      'Autoridad certificadora': ev.autoridadCertificadora,
-      if (ev.ocsp != null) 'OCSP': ev.ocsp!,
-      if (ev.tsp != null) 'TSP': ev.tsp!,
-      if (ev.hashSha256 != null) 'Hash': 'SHA-256 · ${ev.hashSha256}',
-      if (ev.urlVerificacion != null) 'Verificación': ev.urlVerificacion!,
+      'Autoridad Certificadora': ev.autoridadCertificadora,
+
+      'Validez': validezOk ? 'OK — Vigente' : 'N/D',
+      'Revocación': revOk ? 'OK — No revocado' : 'N/D',
+      'Status': tspOk ? 'OK — Válida' : 'N/D',
+
+      if (selloStr != null) 'Fecha (UTC / Local)': selloStr,
+      if (serie != null) '# Serie': serie,
+      if (algoritmo != null) 'Algoritmo': algoritmo,
+
+      if (clean(ev.hashSha256) != null) 'Hash': 'SHA-256 · ${clean(ev.hashSha256)}',
+      if (datosEstamp != null) 'Datos estampillados': datosEstamp,
+
+      if (clean(ev.urlVerificacion) != null) 'Verificación': clean(ev.urlVerificacion)!,
+
+      // deja OCSP/TSP al final (por largos)
+      if (clean(ev.ocsp) != null) 'OCSP': clean(ev.ocsp)!,
+      if (clean(ev.tsp) != null) 'TSP': clean(ev.tsp)!,
     };
-  }
 
-  Future<Uint8List> _buildPdfBytes(DocumentoItem doc, FirmaEvidencia ev) {
-return DocumentoPdfService.buildConstanciaLaboralPdf(
-  doc: doc,
-  evidencia: ev,
-  data: ConstanciaLaboralData(
-    folio: 'CNL-${doc.id.toUpperCase()}',
-    lugar: 'Toluca, Estado de México',
-    fechaEmision: DateTime.now(),
-    nombre: 'MARIA FERNANDA SAGM',
-    numeroServidor: '123456',
-    curp: 'SAGM001101MDFRXXX0',
-    dependencia: 'Gobierno del Estado de México',
-    area: 'Dirección General de Personal',
-    puesto: 'Analista de Sistemas',
-    tipoNombramiento: 'Confianza',
-    fechaIngreso: DateTime(2022, 3, 1),
-    estatusLaboral: 'Activo/a',
-    rfc: 'SAGM001101XXX',
-    nivel: 'N-12',
-    percepcionBrutaMensual: '\$32,450.00 MXN',
-  ),
-);
-  }
-
-  Future<Uint8List> _buildThumbFromPdf(Uint8List pdfBytes) async {
-    await for (final page in Printing.raster(pdfBytes, pages: [0], dpi: 150)) {
-      final png = await page.toPng();
-      return png;
-    }
-    throw Exception('No se pudo rasterizar la página 1');
-  }
-
-  Future<_PdfMeta> _buildMetaFromPdf(Uint8List pdfBytes) async {
-    return _PdfMeta(
-      bytes: pdfBytes.length,
-      // si luego quieres: páginas, formato, etc (depende de lib)
-      createdAt: DateTime.now(),
-    );
-  }
-
-  void _openPreviewInApp(String title, String filename) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _DocumentoPdfPreviewPage(
-          title: title,
-          filename: filename,
-          buildBytes: () => _pdfFuture,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openSystemLayout(DocumentoItem doc) async {
-    try {
-      HapticFeedback.lightImpact();
-      final bytes = await _pdfFuture;
-      await Printing.layoutPdf(
-        name: '${doc.id}.pdf',
-        onLayout: (_) async => bytes,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      _snack('No se pudo abrir el PDF 😅 ($e)');
-    }
-  }
-
-  Future<void> _sharePdf(DocumentoItem doc) async {
-    try {
-      HapticFeedback.lightImpact();
-      final bytes = await _pdfFuture;
-      await Printing.sharePdf(bytes: bytes, filename: '${doc.id}.pdf');
-    } catch (e) {
-      if (!mounted) return;
-      _snack('No se pudo compartir 😅 ($e)');
-    }
-  }
-
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: ColoresApp.texto.withOpacity(0.92),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-    );
+    return map;
   }
 
   @override
@@ -158,10 +239,62 @@ return DocumentoPdfService.buildConstanciaLaboralPdf(
     _doc = _findDoc();
     if (_doc != null) {
       _ev = _demoFirma(_doc!);
+      _pdfFuture = _buildPdfBytes(_doc!, _ev); // ✅ cache
+    }
+  }
 
-      _pdfFuture = _buildPdfBytes(_doc!, _ev);
-      _thumbFuture = _pdfFuture.then(_buildThumbFromPdf);
-      _metaFuture = _pdfFuture.then(_buildMetaFromPdf);
+  Future<Uint8List> _getPdfBytes() async {
+    final f = _pdfFuture;
+    if (f != null) return await f;
+
+    final doc = _doc;
+    if (doc == null) throw Exception('Documento no encontrado');
+    _ev = _demoFirma(doc);
+    final newF = _buildPdfBytes(doc, _ev);
+    _pdfFuture = newF;
+    return await newF;
+  }
+
+  void _openPreviewPage() {
+    final doc = _doc;
+    if (doc == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DocumentoPdfPreviewPage(
+          title: doc.titulo,
+          buildBytes: () => _getPdfBytes(),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _download() async {
+    try {
+      final bytes = await _getPdfBytes();
+      await Printing.layoutPdf(
+        name: '${_doc!.id}.pdf',
+        onLayout: (_) async => bytes,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo abrir/descargar 😅 ($e)')),
+      );
+    }
+  }
+
+  Future<void> _share() async {
+    try {
+      final bytes = await _getPdfBytes();
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: '${_doc!.id}.pdf',
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo compartir 😅 ($e)')),
+      );
     }
   }
 
@@ -179,7 +312,7 @@ return DocumentoPdfService.buildConstanciaLaboralPdf(
               'Documento no encontrado 😅',
               style: t.bodyMedium?.copyWith(
                 fontSize: 13,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: ColoresApp.textoSuave,
               ),
             ),
@@ -188,139 +321,224 @@ return DocumentoPdfService.buildConstanciaLaboralPdf(
       );
     }
 
-    final evidencia = _toMapEvidencia(doc, _ev).entries.toList(growable: false);
+    // ✅ aquí cambia: ahora pasamos doc + demoMode
+    final evidencia = _toMapEvidencia(
+      _ev,
+      doc: doc,
+      demoMode: _demoModeEvidencia,
+    );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FB),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F8FB),
-        elevation: 0,
-        centerTitle: false,
-        iconTheme: IconThemeData(color: ColoresApp.texto),
-        titleSpacing: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              doc.titulo,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: ColoresApp.texto,
-                fontWeight: FontWeight.w900,
-                fontSize: 15.2,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Folio: CNA-${doc.id.toUpperCase()}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: ColoresApp.textoSuave,
-                fontWeight: FontWeight.w800,
-                fontSize: 11.2,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Compartir',
-            onPressed: () => _sharePdf(doc),
-            icon: Icon(
-              PhosphorIcons.shareNetwork(PhosphorIconsStyle.light),
-              color: ColoresApp.texto,
-            ),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-
-      // ✅ barra inferior fija: se siente “app real”
-      bottomNavigationBar: SafeArea(
+      backgroundColor: ColoresApp.blanco,
+      body: SafeArea(
         top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: ColoresApp.bordeSuave)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 20,
-                offset: const Offset(0, -8),
-              ),
-            ],
-          ),
-          child: Row(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _ActionButton(
-                  kind: _ActionKind.primary,
-                  icon: PhosphorIcons.filePdf(PhosphorIconsStyle.light),
-                  label: 'Abrir PDF',
-                  onTap: () => _openSystemLayout(doc),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ActionButton(
-                  kind: _ActionKind.ghost,
-                  icon: PhosphorIcons.shareNetwork(PhosphorIconsStyle.light),
-                  label: 'Compartir',
-                  onTap: () => _sharePdf(doc),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-
-      body: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  // ✅ tarjeta de preview tipo “papel”
-                  _PdfPaperPreview(
-                    thumbFuture: _thumbFuture,
-                    metaFuture: _metaFuture,
-                    onTap: () => _openPreviewInApp(doc.titulo, '${doc.id}.pdf'),
+                  Container(
+                    width: 3,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: ColoresApp.cafe.withOpacity(0.92),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
                   ),
-                  const SizedBox(height: 12),
-
-                  // microcopy elegante (sin rogar)
-                  Row(
-                    children: [
-                      Icon(
-                        PhosphorIcons.magnifyingGlassPlus(PhosphorIconsStyle.light),
-                        size: 16,
-                        color: ColoresApp.textoSuave,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      doc.titulo,
+                      style: t.titleMedium?.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: ColoresApp.texto,
+                        letterSpacing: 0.2,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Toca la vista previa para abrir en pantalla completa',
-                        style: t.bodySmall?.copyWith(
-                          fontSize: 11.2,
-                          fontWeight: FontWeight.w700,
-                          color: ColoresApp.textoSuave,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
-            ),
-          ),
 
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            sliver: SliverToBoxAdapter(
-              child: Text(
+              const SizedBox(height: 8),
+
+              InkWell(
+                onTap: _openPreviewPage,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        PhosphorIcons.eye(PhosphorIconsStyle.light),
+                        size: 16,
+                        color: ColoresApp.cafe.withOpacity(0.9),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Ver vista previa',
+                        style: t.bodySmall?.copyWith(
+                          fontSize: 12.2,
+                          fontWeight: FontWeight.w900,
+                          color: ColoresApp.cafe.withOpacity(0.95),
+                          letterSpacing: 0.1,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        PhosphorIcons.caretRight(PhosphorIconsStyle.light),
+                        size: 14,
+                        color: ColoresApp.textoSuave,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              GestureDetector(
+                onTap: _openPreviewPage,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    height: 300,
+                    decoration: BoxDecoration(
+                      color: ColoresApp.inputBg.withOpacity(0.55),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: ColoresApp.bordeSuave),
+                    ),
+                    child: Stack(
+                      children: [
+                        FutureBuilder<Uint8List>(
+                          future: _pdfFuture,
+                          builder: (context, snap) {
+                            if (!snap.hasData) {
+                              return const Center(child: CircularProgressIndicator());
+                            }
+
+                            final bytes = snap.data!;
+                            return StreamBuilder<PdfRaster>(
+                              stream: Printing.raster(bytes, pages: const [0], dpi: 120),
+                              builder: (context, rs) {
+                                if (!rs.hasData) {
+                                  return const Center(child: CircularProgressIndicator());
+                                }
+
+                                final page = rs.data!;
+                                return FutureBuilder<Uint8List>(
+                                  future: page.toPng(),
+                                  builder: (context, pngSnap) {
+                                    if (!pngSnap.hasData) {
+                                      return const Center(child: CircularProgressIndicator());
+                                    }
+
+                                    return Image.memory(
+                                      pngSnap.data!,
+                                      fit: BoxFit.contain,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                    );
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.92),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: ColoresApp.bordeSuave),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  PhosphorIcons.filePdf(PhosphorIconsStyle.light),
+                                  size: 16,
+                                  color: ColoresApp.texto,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Vista previa',
+                                  style: t.labelMedium?.copyWith(
+                                    fontSize: 11.4,
+                                    fontWeight: FontWeight.w900,
+                                    color: ColoresApp.texto,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.94),
+                              border: Border(top: BorderSide(color: ColoresApp.bordeSuave)),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Toca para abrir en pantalla completa',
+                                    style: t.bodySmall?.copyWith(
+                                      fontSize: 11.4,
+                                      fontWeight: FontWeight.w800,
+                                      color: ColoresApp.textoSuave,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  PhosphorIcons.arrowsOut(PhosphorIconsStyle.light),
+                                  size: 16,
+                                  color: ColoresApp.textoSuave,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              Row(
+                children: [
+                  _Action(
+                    icon: PhosphorIcons.downloadSimple(PhosphorIconsStyle.light),
+                    label: 'Descargar',
+                    onTap: _download,
+                  ),
+                  const SizedBox(width: 10),
+                  _Action(
+                    icon: PhosphorIcons.shareNetwork(PhosphorIconsStyle.light),
+                    label: 'Compartir',
+                    onTap: _share,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 14),
+
+              Text(
                 'Evidencia de firma',
                 style: t.bodyMedium?.copyWith(
                   fontSize: 13.2,
@@ -328,212 +546,68 @@ return DocumentoPdfService.buildConstanciaLaboralPdf(
                   color: ColoresApp.texto,
                 ),
               ),
-            ),
-          ),
-
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 90), // deja espacio al bottom bar
-            sliver: SliverList.separated(
-              itemCount: evidencia.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, i) {
-                final e = evidencia[i];
-                return _EvidenceTile(
-                  title: e.key,
-                  value: e.value,
-                  onCopy: () async {
-                    await Clipboard.setData(ClipboardData(text: e.value));
-                    HapticFeedback.selectionClick();
-                    _snack('Copiado ✅');
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/* =========================
-  Preview “papel” + shimmer
-========================= */
-
-class _PdfPaperPreview extends StatelessWidget {
-  final Future<Uint8List> thumbFuture;
-  final Future<_PdfMeta> metaFuture;
-  final VoidCallback onTap;
-
-  const _PdfPaperPreview({
-    required this.thumbFuture,
-    required this.metaFuture,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: ColoresApp.bordeSuave),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 22,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // header mini
-              Row(
-                children: [
-                  Container(
-                    width: 9,
-                    height: 9,
-                    decoration: BoxDecoration(
-                      color: ColoresApp.cafe.withOpacity(0.92),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Documento PDF · Firmado',
-                    style: t.bodySmall?.copyWith(
-                      fontSize: 11.2,
-                      fontWeight: FontWeight.w900,
-                      color: ColoresApp.texto,
-                    ),
-                  ),
-                  const Spacer(),
-                  FutureBuilder<_PdfMeta>(
-                    future: metaFuture,
-                    builder: (_, snap) {
-                      if (!snap.hasData) {
-                        return Text(
-                          '…',
-                          style: t.bodySmall?.copyWith(
-                            fontSize: 10.8,
-                            fontWeight: FontWeight.w800,
-                            color: ColoresApp.textoSuave,
-                          ),
-                        );
-                      }
-                      return Text(
-                        _formatBytes(snap.data!.bytes),
-                        style: t.bodySmall?.copyWith(
-                          fontSize: 10.8,
-                          fontWeight: FontWeight.w800,
-                          color: ColoresApp.textoSuave,
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
               const SizedBox(height: 10),
 
-              // “hoja”
-              AspectRatio(
-                aspectRatio: 16 / 11, // se ve “papel” sin ser tan alto
+              Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF4F2EE),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: ColoresApp.bordeSuave.withOpacity(0.9)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      FutureBuilder<Uint8List>(
-                        future: thumbFuture,
-                        builder: (context, snap) {
-                          if (snap.connectionState == ConnectionState.waiting) {
-                            return const _Shimmer();
-                          }
-                          if (snap.hasError || !snap.hasData) {
-                            return Center(
-                              child: Icon(
-                                PhosphorIcons.filePdf(PhosphorIconsStyle.light),
-                                size: 46,
-                                color: ColoresApp.textoSuave,
-                              ),
-                            );
-                          }
-
-                          return Image.memory(
-                            snap.data!,
-                            fit: BoxFit.cover,
-                            filterQuality: FilterQuality.high,
-                          );
-                        },
-                      ),
-
-                      // overlay top-right
-                      Positioned(
-                        right: 10,
-                        top: 10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.45),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                PhosphorIcons.sealCheck(PhosphorIconsStyle.light),
-                                size: 14,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'Válido',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // sombra inferior como “hoja sobre mesa”
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          height: 60,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [
-                                Colors.black.withOpacity(0.16),
-                                Colors.transparent,
-                              ],
-                            ),
-                          ),
-                        ),
+                    color: ColoresApp.blanco,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: ColoresApp.bordeSuave),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                    itemCount: evidencia.length,
+                    separatorBuilder: (_, __) => Divider(
+                      height: 14,
+                      thickness: 1,
+                      color: ColoresApp.bordeSuave.withOpacity(0.7),
+                    ),
+                    itemBuilder: (context, i) {
+                      final k = evidencia.keys.elementAt(i);
+                      final v = evidencia[k]!;
+
+                      final isTech = _isTechField(k, v);
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 4,
+                            child: Text(
+                              k,
+                              style: t.bodySmall?.copyWith(
+                                fontSize: 11.4,
+                                fontWeight: FontWeight.w800,
+                                color: ColoresApp.texto,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 6,
+                            child: Text(
+                              v,
+                              style: t.bodySmall?.copyWith(
+                                fontSize: isTech ? 10.4 : 11.2,
+                                fontWeight: FontWeight.w700,
+                                color: ColoresApp.textoSuave,
+                                height: 1.25,
+                                fontFamily: isTech ? 'monospace' : null,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
@@ -544,129 +618,12 @@ class _PdfPaperPreview extends StatelessWidget {
   }
 }
 
-/* =========================
-  Evidencia tile (copiar)
-========================= */
-
-class _EvidenceTile extends StatelessWidget {
-  final String title;
-  final String value;
-  final VoidCallback onCopy;
-
-  const _EvidenceTile({
-    required this.title,
-    required this.value,
-    required this.onCopy,
-  });
-
-  bool get _looksLikeUrl => value.startsWith('http://') || value.startsWith('https://');
-  bool get _looksLikeHash => value.toLowerCase().contains('sha-256') || value.length >= 40;
-
-  IconData get _icon {
-    final k = title.toLowerCase();
-    if (k.contains('hash')) return PhosphorIcons.fingerprintSimple(PhosphorIconsStyle.light);
-    if (k.contains('ocsp') || k.contains('tsp')) return PhosphorIcons.shieldCheck(PhosphorIconsStyle.light);
-    if (k.contains('autoridad')) return PhosphorIcons.buildings(PhosphorIconsStyle.light);
-    if (k.contains('archivo')) return PhosphorIcons.filePdf(PhosphorIconsStyle.light);
-    if (k.contains('secuencia')) return PhosphorIcons.hash(PhosphorIconsStyle.light);
-    if (k.contains('verificación')) return PhosphorIcons.link(PhosphorIconsStyle.light);
-    return PhosphorIcons.seal(PhosphorIconsStyle.light);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onCopy,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: ColoresApp.bordeSuave),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 14,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: ColoresApp.inputBg.withOpacity(0.72),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: ColoresApp.bordeSuave),
-                ),
-                child: Icon(_icon, size: 18, color: ColoresApp.texto),
-              ),
-              const SizedBox(width: 10),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: t.bodySmall?.copyWith(
-                        fontSize: 11.4,
-                        fontWeight: FontWeight.w900,
-                        color: ColoresApp.texto,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      value,
-                      style: t.bodySmall?.copyWith(
-                        fontSize: 11.4,
-                        fontWeight: FontWeight.w800,
-                        color: _looksLikeUrl ? ColoresApp.cafe.withOpacity(0.95) : ColoresApp.textoSuave,
-                        height: 1.25,
-                        fontFamily: _looksLikeHash ? 'monospace' : null,
-                        decoration: _looksLikeUrl ? TextDecoration.underline : null,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 8),
-              Icon(
-                PhosphorIcons.copySimple(PhosphorIconsStyle.light),
-                size: 18,
-                color: ColoresApp.textoSuave,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/* =========================
-  Action buttons bottom
-========================= */
-
-enum _ActionKind { primary, ghost }
-
-class _ActionButton extends StatelessWidget {
-  final _ActionKind kind;
+class _Action extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
-  const _ActionButton({
-    required this.kind,
+  const _Action({
     required this.icon,
     required this.label,
     required this.onTap,
@@ -676,166 +633,118 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
 
-    final isPrimary = kind == _ActionKind.primary;
-
-    return Material(
-      color: isPrimary ? ColoresApp.cafe.withOpacity(0.92) : ColoresApp.inputBg.withOpacity(0.85),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
+    return Expanded(
+      child: Material(
+        color: ColoresApp.inputBg.withOpacity(0.75),
         borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: 48,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isPrimary ? Colors.transparent : ColoresApp.bordeSuave,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 18, color: isPrimary ? Colors.white : ColoresApp.texto),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: t.labelMedium?.copyWith(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  color: isPrimary ? Colors.white : ColoresApp.texto,
-                  letterSpacing: 0.1,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/* =========================
-  Shimmer (sin paquetes)
-========================= */
-
-class _Shimmer extends StatefulWidget {
-  const _Shimmer();
-
-  @override
-  State<_Shimmer> createState() => _ShimmerState();
-}
-
-class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1150))..repeat();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (_, __) {
-        final v = _c.value; // 0..1
-        return ShaderMask(
-          shaderCallback: (r) {
-            return LinearGradient(
-              begin: Alignment(-1.0 + 2.0 * v, 0),
-              end: Alignment(-0.2 + 2.0 * v, 0),
-              colors: [
-                const Color(0xFFE9EAF0),
-                const Color(0xFFF7F8FB),
-                const Color(0xFFE9EAF0),
-              ],
-            ).createShader(r);
-          },
-          blendMode: BlendMode.srcATop,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
           child: Container(
-            color: const Color(0xFFE9EAF0),
-            child: Center(
-              child: Icon(
-                PhosphorIcons.filePdf(PhosphorIconsStyle.light),
-                size: 40,
-                color: ColoresApp.textoSuave.withOpacity(0.55),
-              ),
+            height: 46,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: ColoresApp.bordeSuave),
             ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/* =========================
-  Preview completo (in-app)
-========================= */
-
-class _DocumentoPdfPreviewPage extends StatelessWidget {
-  final String title;
-  final String filename;
-  final Future<Uint8List> Function() buildBytes;
-
-  const _DocumentoPdfPreviewPage({
-    required this.title,
-    required this.filename,
-    required this.buildBytes,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: ColoresApp.blanco,
-      appBar: AppBar(
-        backgroundColor: ColoresApp.blanco,
-        elevation: 0,
-        iconTheme: IconThemeData(color: ColoresApp.texto),
-        title: Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: ColoresApp.texto,
-            fontWeight: FontWeight.w900,
-            fontSize: 14.5,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: ColoresApp.texto),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: t.labelMedium?.copyWith(
+                    fontSize: 11.6,
+                    fontWeight: FontWeight.w900,
+                    color: ColoresApp.texto,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
-      body: PdfPreview(
-        build: (_) => buildBytes(),
-        pdfFileName: filename,
-        allowPrinting: true,
-        allowSharing: true,
-        canChangePageFormat: false,
-        canChangeOrientation: false,
-      ),
     );
   }
 }
 
 /* =========================
-  Helpers
+  Helpers (UI evidence)
 ========================= */
 
-class _PdfMeta {
-  final int bytes;
-  final DateTime createdAt;
-  const _PdfMeta({required this.bytes, required this.createdAt});
+bool _isTechField(String k, String v) {
+  final kk = k.toLowerCase();
+  return kk.contains('hash') ||
+      kk.contains('cadena') ||
+      kk.contains('serie') ||
+      kk.contains('datos') ||
+      kk.contains('url') ||
+      v.contains('SHA-256') ||
+      v.length > 60;
 }
 
-String _formatBytes(int bytes) {
-  // formato simple, sin intl
-  if (bytes < 1024) return '$bytes B';
-  final kb = bytes / 1024;
-  if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
-  final mb = kb / 1024;
-  return '${mb.toStringAsFixed(2)} MB';
+// FNV-1a simple hash -> seed
+int _seedFrom(String s) {
+  int hash = 0x811C9DC5;
+  for (final c in s.codeUnits) {
+    hash ^= c;
+    hash = (hash * 0x01000193) & 0x7fffffff;
+  }
+  return hash;
+}
+
+// random hex
+String _hex(Random rng, {required int bytes}) {
+  const hex = '0123456789abcdef';
+  final sb = StringBuffer();
+  for (int i = 0; i < bytes; i++) {
+    final b = rng.nextInt(256);
+    sb.write(hex[(b >> 4) & 0xF]);
+    sb.write(hex[b & 0xF]);
+  }
+  return sb.toString();
+}
+
+String _formatUtcLocalLine(DateTime d) {
+  final utc = d.toUtc();
+  final local = d.toLocal();
+
+  String isoNoMillis(DateTime x) {
+    final s = x.toIso8601String();
+    return s.contains('.') ? s.split('.').first : s;
+  }
+
+  String offset(DateTime x) {
+    final o = x.timeZoneOffset;
+    final sign = o.isNegative ? '-' : '+';
+    final hh = o.inHours.abs().toString().padLeft(2, '0');
+    final mm = (o.inMinutes.abs() % 60).toString().padLeft(2, '0');
+    return '$sign$hh:$mm';
+  }
+
+  return '${isoNoMillis(utc)}Z / ${isoNoMillis(local)}${offset(local)}';
+}
+
+// hex block (espaciado y con saltos)
+String _formatHexBlock(String input, {int group = 2, int groupsPerLine = 28}) {
+  final raw = input.replaceAll(RegExp(r'[^0-9a-fA-F]'), '');
+  if (raw.isEmpty) return input.trim();
+
+  final sb = StringBuffer();
+  var g = 0;
+
+  for (int i = 0; i < raw.length; i += group) {
+    final end = (i + group <= raw.length) ? i + group : raw.length;
+    sb.write(raw.substring(i, end));
+    g++;
+
+    if (end < raw.length) sb.write(' ');
+    if (g >= groupsPerLine) {
+      sb.write('\n');
+      g = 0;
+    }
+  }
+
+  return sb.toString().trim();
 }

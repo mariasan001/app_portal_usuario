@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../tema/colores.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/login_form.dart';
-
+// ...imports
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -28,16 +28,6 @@ class _LoginPageState extends State<LoginPage> {
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) return;
 
-    final user = _userCtrl.text.trim();
-    final pass = _passCtrl.text.trim();
-
-    // TODO: aquí conectas API real (service)
-    // final success = await authService.login(user, pass);
-    // if (!success) return;
-
-    debugPrint('LOGIN -> user: $user, pass: $pass');
-
-    // ✅ Si todo OK: ir a Home
     if (!mounted) return;
     context.go('/home');
   }
@@ -48,11 +38,37 @@ class _LoginPageState extends State<LoginPage> {
 
     return AuthShell(
       backgroundAsset: 'assets/img/fondo.png',
-      overlayOpacity: 0.10, // si quieres más contraste, súbelo a 0.14 - 0.18
+      overlayOpacity: 0.10,
+
+      // ✅ Logos ahora van “hasta arriba” por el AuthShell
+      childTop: Row(
+        children: [
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _LogoBox(
+                asset: 'assets/img/escudo_2.png',
+                height: 94,
+                maxWidth: 140,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: _LogoBox(
+                asset: 'assets/img/escudo.png',
+                height: 54,
+                maxWidth: 210,
+              ),
+            ),
+          ),
+        ],
+      ),
 
       titulo: 'Bienvenido a tu espacio\ndigital',
-      subtitulo:
-          'Inicia sesión para acceder a tus recibos, movimientos\ny normativas vigentes.',
+      subtitulo: 'Inicia sesión para acceder a tus recibos, movimientos\ny normativas vigentes.',
       primaryText: 'Entrar a mi perfil',
       onPrimary: _login,
 
@@ -65,60 +81,52 @@ class _LoginPageState extends State<LoginPage> {
 
       footer: Column(
         children: [
-          TextButton(
-            onPressed: () => context.go('/registro'),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'No tengo cuenta quiero ',
-                    style: t.bodySmall?.copyWith(
-                      color: ColoresApp.texto,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'registrarme',
-                    style: t.bodySmall?.copyWith(
-                      color: ColoresApp.vino,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 2),
-
-          // ✅ “Olvidé mi contraseña” (opcional pero recomendado)
-          TextButton(
-            onPressed: () => context.go('/recuperar'),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              'Olvidé mi contraseña',
-              style: t.bodySmall?.copyWith(
-                color: ColoresApp.vino,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 2),
+          // ...tu footer igual (registro, recuperar, aviso, leyenda)
           Text(
             'Aviso de Privacidad',
             textAlign: TextAlign.center,
             style: t.bodySmall?.copyWith(color: ColoresApp.textoSuave),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Desarrollado por Oficialía Mayor . Dirección General del Personal',
+            textAlign: TextAlign.center,
+            style: t.bodySmall?.copyWith(
+              fontSize: 10.6,
+              height: 1.25,
+              color: ColoresApp.textoSuave,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _LogoBox extends StatelessWidget {
+  final String asset;
+  final double height;
+  final double maxWidth;
+
+  const _LogoBox({
+    required this.asset,
+    this.height = 54,
+    this.maxWidth = 210,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+
+    
+      child: Image.asset(
+        asset,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
       ),
     );
   }

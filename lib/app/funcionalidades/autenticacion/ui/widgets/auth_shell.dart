@@ -15,13 +15,16 @@ class AuthShell extends StatelessWidget {
 
   final Widget? footer;
 
+  // ✅ NUEVO: slot superior (logos, etc.) FIJO ARRIBA
+  final Widget? childTop;
+
   // ✅ si quieres mostrar back
   final bool showBack;
   final VoidCallback? onBack;
-  final String fallbackBackRoute; // por si no hay stack
+  final String fallbackBackRoute;
 
   // ✅ Fondo opcional
-  final String? backgroundAsset; // ej: 'assets/img/fondo.png'
+  final String? backgroundAsset;
   final BoxFit backgroundFit;
   final Alignment backgroundAlignment;
 
@@ -36,13 +39,12 @@ class AuthShell extends StatelessWidget {
     required this.primaryText,
     required this.onPrimary,
     this.footer,
+    this.childTop,
 
-    // ✅ Back
     this.showBack = false,
     this.onBack,
     this.fallbackBackRoute = '/login',
 
-    // ✅ Fondo
     this.backgroundAsset,
     this.backgroundFit = BoxFit.cover,
     this.backgroundAlignment = Alignment.center,
@@ -50,16 +52,12 @@ class AuthShell extends StatelessWidget {
   });
 
   void _handleBack(BuildContext context) {
-    // 1) si el caller quiere ejecutar algo extra
     onBack?.call();
 
-    // 2) back real (si hay historial)
     if (context.canPop()) {
       context.pop();
       return;
     }
-
-    // 3) si NO hay historial (porque viniste con go)
     context.go(fallbackBackRoute);
   }
 
@@ -90,52 +88,67 @@ class AuthShell extends StatelessWidget {
           SafeArea(
             child: Stack(
               children: [
-                // ✅ Contenido centrado
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const SizedBox(height: 26), // deja aire para el back flotante
+                // ✅ Layout: logos arriba + contenido centrado
+                Column(
+                  children: [
+                    if (childTop != null) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
+                        child: childTop!,
+                      ),
+                      const SizedBox(height: 8), // aire pequeño debajo del logo
+                    ],
 
-                          AuthBanner(
-                            texto: titulo,
-                            leftAsset: 'assets/ornamentos/flor_d.png',
-                            rightAsset: 'assets/ornamentos/flor_i.png',
-                          ),
+                    Expanded(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // ✅ aire por si hay back flotante
+                                SizedBox(height: showBack ? 18 : 6),
 
-                          const SizedBox(height: 14),
-
-                          Text(
-                            subtitulo,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: ColoresApp.textoSuave,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.35,
+                                AuthBanner(
+                                  texto: titulo,
+                                  leftAsset: 'assets/ornamentos/flor_d.png',
+                                  rightAsset: 'assets/ornamentos/flor_i.png',
                                 ),
+
+                                const SizedBox(height: 14),
+
+                                Text(
+                                  subtitulo,
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: ColoresApp.textoSuave,
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.35,
+                                      ),
+                                ),
+
+                                const SizedBox(height: 20),
+                                child,
+                                const SizedBox(height: 18),
+
+                                AuthPrimaryButton(text: primaryText, onTap: onPrimary),
+
+                                if (footer != null) ...[
+                                  const SizedBox(height: 10),
+                                  footer!,
+                                ],
+                              ],
+                            ),
                           ),
-
-                          const SizedBox(height: 20),
-                          child,
-                          const SizedBox(height: 18),
-
-                          AuthPrimaryButton(text: primaryText, onTap: onPrimary),
-
-                          if (footer != null) ...[
-                            const SizedBox(height: 10),
-                            footer!,
-                          ],
-                        ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
 
-                // ✅ Back flotante PRO (más arriba)
+                // ✅ Back flotante
                 if (showBack)
                   Positioned(
                     left: 14,
@@ -155,7 +168,6 @@ class AuthShell extends StatelessWidget {
 
 class _FloatingBackButton extends StatelessWidget {
   final VoidCallback onTap;
-
   const _FloatingBackButton({required this.onTap});
 
   @override
