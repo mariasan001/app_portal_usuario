@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contraseña/nueva_contrasena_page.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contraseña/recuperar_password_page.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contrase%C3%B1a/nueva_contrasena_page.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contrase%C3%B1a/recuperar_password_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/login/login_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/token/token_page.dart';
 import 'package:portal_servicios_usuario/core/device/device_metadata_collector.dart';
@@ -41,6 +41,29 @@ void main() {
       expect(find.text('home-dest'), findsOneWidget);
     });
 
+    testWidgets('LoginPage muestra error si las credenciales fallan', (
+      tester,
+    ) async {
+      final repository = WidgetTestAuthRepository(
+        loginErrorMessage: 'Credenciales invalidas.',
+      );
+
+      await _pumpAuthPage(
+        tester,
+        page: const LoginPage(),
+        repository: repository,
+      );
+
+      await tester.enterText(find.byType(TextField).at(0), '210049376');
+      await tester.enterText(find.byType(TextField).at(1), 'Incorrecta123');
+      await tester.tap(find.text('Entrar a mi perfil'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Credenciales invalidas.'), findsOneWidget);
+      expect(find.text('home-dest'), findsNothing);
+    });
+
     testWidgets('RecuperarPasswordPage navega a token al enviar correo', (
       tester,
     ) async {
@@ -58,6 +81,28 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('token-dest'), findsOneWidget);
+    });
+
+    testWidgets('RecuperarPasswordPage muestra error si forgot falla', (
+      tester,
+    ) async {
+      final repository = WidgetTestAuthRepository(
+        forgotPasswordErrorMessage: 'No se pudo enviar el codigo.',
+      );
+
+      await _pumpAuthPage(
+        tester,
+        page: const RecuperarPasswordPage(),
+        repository: repository,
+      );
+
+      await tester.enterText(find.byType(TextField).first, 'persona@demo.com');
+      await tester.tap(find.text('Enviar codigo'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('No se pudo enviar el codigo.'), findsOneWidget);
+      expect(find.text('token-dest'), findsNothing);
     });
 
     testWidgets('TokenPage de recuperacion avanza al completar 6 digitos', (
@@ -111,7 +156,132 @@ void main() {
 
       expect(find.text('login-dest'), findsOneWidget);
     });
+
+    testWidgets('NuevaContrasenaPage muestra error si reset falla', (
+      tester,
+    ) async {
+      final repository = WidgetTestAuthRepository(
+        resetPasswordErrorMessage: 'El codigo ya expiro.',
+      );
+
+      await _pumpAuthPage(
+        tester,
+        page: const NuevaContrasenaPage(
+          email: 'persona@demo.com',
+          token: '483921',
+        ),
+        repository: repository,
+      );
+
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'NuevaPass#2026',
+      );
+      await tester.enterText(
+        find.byType(TextFormField).at(1),
+        'NuevaPass#2026',
+      );
+      await tester.tap(find.text('Cambiar contrasena'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('El codigo ya expiro.'), findsOneWidget);
+      expect(find.text('login-dest'), findsNothing);
+    });
+
+    testWidgets(
+      'Smoke: flujo completo de recuperacion avanza entre pantallas',
+      (tester) async {
+        final repository = WidgetTestAuthRepository();
+
+        final router = GoRouter(
+          initialLocation: '/recuperar',
+          routes: [
+            GoRoute(
+              path: '/recuperar',
+              builder: (context, state) => const RecuperarPasswordPage(),
+            ),
+            GoRoute(
+              path: '/token',
+              builder: (context, state) {
+                final extra = _readExtraMap(state);
+                return TokenPage(
+                  backRoute: extra['backRoute'] as String? ?? '/login',
+                  nextRoute:
+                      extra['nextRoute'] as String? ?? '/nueva-contrasena',
+                  flow: extra['flow'] as String? ?? 'password-reset',
+                  email: extra['email'] as String?,
+                  username: extra['username'] as String? ?? '',
+                  enrollmentId: extra['enrollmentId'] as String? ?? '',
+                );
+              },
+            ),
+            GoRoute(
+              path: '/nueva-contrasena',
+              builder: (context, state) {
+                final extra = _readExtraMap(state);
+                return NuevaContrasenaPage(
+                  email: extra['email'] as String? ?? '',
+                  token: extra['token'] as String? ?? '',
+                  backRoute: extra['backRoute'] as String? ?? '/token',
+                );
+              },
+            ),
+            GoRoute(
+              path: '/login',
+              builder: (context, state) =>
+                  const Scaffold(body: Text('login-dest')),
+            ),
+          ],
+        );
+
+        await _pumpRouter(tester, router: router, repository: repository);
+
+        await tester.enterText(
+          find.byType(TextField).first,
+          'persona@demo.com',
+        );
+        await tester.tap(find.text('Enviar codigo'));
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Verifica tu codigo'), findsOneWidget);
+
+        await tester.enterText(find.byType(TextFormField).first, '483921');
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Crea tu nueva contrasena'), findsOneWidget);
+
+        await tester.enterText(
+          find.byType(TextFormField).at(0),
+          'NuevaPass#2026',
+        );
+        await tester.enterText(
+          find.byType(TextFormField).at(1),
+          'NuevaPass#2026',
+        );
+        await tester.tap(find.text('Cambiar contrasena'));
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        expect(find.text('login-dest'), findsOneWidget);
+      },
+    );
   });
+}
+
+Map<String, dynamic> _readExtraMap(GoRouterState state) {
+  final extra = state.extra;
+  if (extra is Map<String, dynamic>) {
+    return extra;
+  }
+
+  if (extra is Map<Object?, Object?>) {
+    return extra.cast<String, dynamic>();
+  }
+
+  return const {};
 }
 
 Future<void> _pumpAuthPage(
@@ -152,6 +322,14 @@ Future<void> _pumpAuthPage(
     ],
   );
 
+  await _pumpRouter(tester, router: router, repository: repository);
+}
+
+Future<void> _pumpRouter(
+  WidgetTester tester, {
+  required GoRouter router,
+  required WidgetTestAuthRepository repository,
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -184,6 +362,22 @@ class _WidgetTestDeviceMetadataCollector implements DeviceMetadataCollector {
 }
 
 class WidgetTestAuthRepository implements AuthRepository {
+  WidgetTestAuthRepository({
+    this.loginErrorMessage,
+    this.forgotPasswordErrorMessage,
+    this.resetPasswordErrorMessage,
+    this.deviceCheckResult = const DeviceCheckResult(
+      code: DeviceCheckCode.ok,
+      rawCode: 'OK',
+      message: 'Dispositivo reconocido',
+    ),
+  });
+
+  final String? loginErrorMessage;
+  final String? forgotPasswordErrorMessage;
+  final String? resetPasswordErrorMessage;
+  final DeviceCheckResult deviceCheckResult;
+
   int _getCurrentUserCalls = 0;
 
   @override
@@ -194,11 +388,7 @@ class WidgetTestAuthRepository implements AuthRepository {
     required String username,
     required AppDeviceInfo device,
   }) async {
-    return const DeviceCheckResult(
-      code: DeviceCheckCode.ok,
-      rawCode: 'OK',
-      message: 'Dispositivo reconocido',
-    );
+    return deviceCheckResult;
   }
 
   @override
@@ -216,6 +406,10 @@ class WidgetTestAuthRepository implements AuthRepository {
 
   @override
   Future<AuthActionResult> forgotPassword({required String email}) async {
+    if (forgotPasswordErrorMessage != null) {
+      throw ApiException(message: forgotPasswordErrorMessage!);
+    }
+
     return const AuthActionResult(ok: true, message: 'OTP enviado al correo');
   }
 
@@ -241,6 +435,10 @@ class WidgetTestAuthRepository implements AuthRepository {
     required String username,
     required String password,
   }) async {
+    if (loginErrorMessage != null) {
+      throw ApiException(message: loginErrorMessage!);
+    }
+
     return const LoginResult(
       username: '210049376',
       userId: 25,
@@ -283,6 +481,10 @@ class WidgetTestAuthRepository implements AuthRepository {
     required String otp,
     required String newPassword,
   }) async {
+    if (resetPasswordErrorMessage != null) {
+      throw ApiException(message: resetPasswordErrorMessage!);
+    }
+
     return const AuthActionResult(ok: true, message: 'Password actualizado');
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -11,8 +12,9 @@ import 'package:portal_servicios_usuario/app/funcionalidades/servicios/ui/widget
 import 'package:portal_servicios_usuario/app/funcionalidades/notificaciones/ui/widgets/notificaciones_sheet.dart';
 
 import 'package:portal_servicios_usuario/app/tema/colores.dart';
+import 'package:portal_servicios_usuario/features/auth/application/auth_providers.dart';
 
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   final Widget child;
   const AppShell({super.key, required this.child});
 
@@ -41,7 +43,47 @@ class AppShell extends StatelessWidget {
     }
   }
 
-  void _openMoreSheet(BuildContext context) {
+  Future<void> _confirmAndLogout(BuildContext context, WidgetRef ref) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Cerrar sesion'),
+          content: const Text(
+            'Se limpiara la sesion guardada en este dispositivo. Podras volver a iniciar cuando quieras.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Salir'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout != true || !context.mounted) {
+      return;
+    }
+
+    await ref.read(authControllerProvider.notifier).signOutLocally();
+
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sesion cerrada correctamente.')),
+    );
+    context.go('/login');
+  }
+
+  void _openMoreSheet(BuildContext context, WidgetRef ref) {
     final base = Theme.of(context);
 
     final sheetTheme = base.copyWith(
@@ -61,7 +103,7 @@ class AppShell extends StatelessWidget {
       useSafeArea: true,
       isScrollControlled: true,
       showDragHandle: true,
-      barrierColor: Colors.black.withOpacity(0.40),
+      barrierColor: Colors.black.withValues(alpha: 0.40),
       backgroundColor: ColoresApp.blanco,
       clipBehavior: Clip.antiAlias,
       shape: const RoundedRectangleBorder(
@@ -93,13 +135,13 @@ class AppShell extends StatelessWidget {
           // ✅ Ayuda (placeholder)
           onAyuda: () {
             Navigator.pop(ctx);
-             context.go('/ayuda');
+            context.go('/ayuda');
           },
 
           // ✅ Logout
-          onLogout: () {
+          onLogout: () async {
             Navigator.pop(ctx);
-            context.go('/login');
+            await _confirmAndLogout(context, ref);
           },
         ),
       ),
@@ -112,7 +154,7 @@ class AppShell extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.40),
+      barrierColor: Colors.black.withValues(alpha: 0.40),
       builder: (_) {
         return ServiciosSearchSheet(
           onOpen: (item) {
@@ -124,9 +166,9 @@ class AppShell extends StatelessWidget {
               return;
             }
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Abrir: ${item.titulo}')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Abrir: ${item.titulo}')));
           },
         );
       },
@@ -148,7 +190,7 @@ class AppShell extends StatelessWidget {
       useSafeArea: true,
       isScrollControlled: true,
       showDragHandle: true,
-      barrierColor: Colors.black.withOpacity(0.40),
+      barrierColor: Colors.black.withValues(alpha: 0.40),
       backgroundColor: ColoresApp.blanco,
       clipBehavior: Clip.antiAlias,
       shape: const RoundedRectangleBorder(
@@ -171,16 +213,16 @@ class AppShell extends StatelessWidget {
             return;
           }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Abrir: ${item.titulo}')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Abrir: ${item.titulo}')));
         },
       ),
     );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final loc = GoRouterState.of(context).uri.toString();
     final currentIndex = _indexFromLocation(loc);
 
@@ -191,8 +233,8 @@ class AppShell extends StatelessWidget {
     final hintSearch = inServicios
         ? 'Buscar trámites y consultas…'
         : inDocs
-            ? 'Buscar documentos y constancias…'
-            : 'Buscar en tu portal…';
+        ? 'Buscar documentos y constancias…'
+        : 'Buscar en tu portal…';
 
     // ✅ Trailing dinámico: en servicios mostramos “filtros”
     final trailing = inServicios
@@ -202,13 +244,13 @@ class AppShell extends StatelessWidget {
               Icon(
                 PhosphorIcons.slidersHorizontal(PhosphorIconsStyle.light),
                 size: 18,
-                color: ColoresApp.textoSuave.withOpacity(0.85),
+                color: ColoresApp.textoSuave.withValues(alpha: 0.85),
               ),
               const SizedBox(width: 8),
               Icon(
                 PhosphorIcons.caretRight(PhosphorIconsStyle.light),
                 size: 18,
-                color: ColoresApp.textoSuave.withOpacity(0.6),
+                color: ColoresApp.textoSuave.withValues(alpha: 0.6),
               ),
             ],
           )
@@ -264,8 +306,8 @@ class AppShell extends StatelessWidget {
               onTapBuscar: inServicios
                   ? () => _openServiciosSearch(context)
                   : inDocs
-                      ? () => _openDocumentosSearch(context)
-                      : null,
+                  ? () => _openDocumentosSearch(context)
+                  : null,
               searchTrailing: trailing,
 
               // 👤 Perfil (topbar)
@@ -275,7 +317,8 @@ class AppShell extends StatelessWidget {
               // 🔔 Notificacionesiq
               notificacionesPendientes: notifsPendientes,
               showNotificationDotWhenZero: true,
-              onTapNotificaciones: () => _openNotificaciones(context, demoNotifs),
+              onTapNotificaciones: () =>
+                  _openNotificaciones(context, demoNotifs),
             ),
 
             Expanded(child: child),
@@ -286,7 +329,7 @@ class AppShell extends StatelessWidget {
         currentIndex: currentIndex,
         onTap: (i) {
           if (i == 4) {
-            _openMoreSheet(context);
+            _openMoreSheet(context, ref);
             return;
           }
           _goByIndex(context, i);

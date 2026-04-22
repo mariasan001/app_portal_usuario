@@ -107,6 +107,24 @@ void main() {
       expect(result, isNull);
       expect(state.errorMessage, 'OTP invalido');
     });
+
+    test(
+      'signOutLocally limpia sesion y deja el estado sin autenticar',
+      () async {
+        final controller = container.read(authControllerProvider.notifier);
+        await Future<void>.delayed(Duration.zero);
+
+        await controller.login(username: '210049376', password: 'Secreto123');
+        expect(container.read(authControllerProvider).isAuthenticated, isTrue);
+
+        await controller.signOutLocally();
+
+        final state = container.read(authControllerProvider);
+        expect(state.status, AuthStatus.unauthenticated);
+        expect(state.user, isNull);
+        expect(repository.clearSessionCalled, isTrue);
+      },
+    );
   });
 }
 

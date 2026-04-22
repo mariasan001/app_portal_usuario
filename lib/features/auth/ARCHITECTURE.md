@@ -101,6 +101,31 @@ el flujo actual no usa `otp/request`, `otp/verify` ni `ping`; se retiraron para
 mantener esta sesion enfocada solo en login, registro, recuperacion y control
 de dispositivo.
 
+## Ambientes y `dart-define`
+
+La configuracion base vive en `lib/core/config/app_environment.dart`.
+
+- `APP_FLAVOR`
+  - acepta `dev`, `qa` o `prod`
+- `IAM_BASE_URL`
+  - override directo para IAM
+- `IAM_BASE_URL_DEV`
+  - URL por defecto del ambiente dev
+- `IAM_BASE_URL_QA`
+  - URL por defecto del ambiente qa
+- `IAM_BASE_URL_PROD`
+  - URL por defecto del ambiente prod
+- `IAM_APP_CODE`
+  - codigo de aplicacion que viaja con auth
+
+Ejemplos:
+
+```bash
+flutter run --dart-define=APP_FLAVOR=dev
+flutter run --dart-define=APP_FLAVOR=qa --dart-define=IAM_BASE_URL_QA=https://qa.mi-backend.com/iam
+flutter run --dart-define=IAM_BASE_URL=http://10.0.32.46:8081/iam --dart-define=IAM_APP_CODE=PLAT_SERV
+```
+
 ## Nota importante
 
 No todo archivo necesita mucha logica. Algunos existen para que el modulo sea:
