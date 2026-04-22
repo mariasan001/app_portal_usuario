@@ -173,75 +173,6 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  Future<AuthActionResult?> requestOtp({
-    required String usernameOrEmail,
-    required String purpose,
-  }) async {
-    state = state.copyWith(
-      isLoading: true,
-      clearErrorMessage: true,
-      clearInfoMessage: true,
-    );
-
-    try {
-      final result = await ref
-          .read(otpRequestUseCaseProvider)
-          .call(usernameOrEmail: usernameOrEmail, purpose: purpose);
-
-      state = state.copyWith(
-        isLoading: false,
-        infoMessage: result.message.isEmpty
-            ? 'Te enviamos un nuevo codigo.'
-            : result.message,
-      );
-      return result;
-    } on ApiException catch (error) {
-      state = state.copyWith(isLoading: false, errorMessage: error.message);
-      return null;
-    } catch (_) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'No se pudo solicitar el codigo OTP.',
-      );
-      return null;
-    }
-  }
-
-  Future<AuthActionResult?> verifyOtp({
-    required String usernameOrEmail,
-    required String purpose,
-    required String otp,
-  }) async {
-    state = state.copyWith(
-      isLoading: true,
-      clearErrorMessage: true,
-      clearInfoMessage: true,
-    );
-
-    try {
-      final result = await ref
-          .read(otpVerifyUseCaseProvider)
-          .call(usernameOrEmail: usernameOrEmail, purpose: purpose, otp: otp);
-
-      state = state.copyWith(
-        isLoading: false,
-        infoMessage: result.message.isEmpty
-            ? 'Codigo validado.'
-            : result.message,
-      );
-      return result;
-    } on ApiException catch (error) {
-      state = state.copyWith(isLoading: false, errorMessage: error.message);
-      return null;
-    } catch (_) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'No se pudo validar el codigo OTP.',
-      );
-      return null;
-    }
-  }
-
   Future<AuthActionResult?> resetPassword({
     required String email,
     required String otp,
@@ -367,8 +298,6 @@ class AuthController extends Notifier<AuthState> {
       rethrow;
     }
   }
-
-  Future<String> ping() => ref.read(pingAuthApiUseCaseProvider).call();
 
   Future<void> signOutLocally() async {
     await ref.read(clearSessionUseCaseProvider).call();

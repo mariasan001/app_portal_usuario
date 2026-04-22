@@ -28,17 +28,6 @@ abstract interface class AuthRepository {
 
   Future<AuthActionResult> forgotPassword({required String email});
 
-  Future<AuthActionResult> requestOtp({
-    required String usernameOrEmail,
-    required String purpose,
-  });
-
-  Future<AuthActionResult> verifyOtp({
-    required String usernameOrEmail,
-    required String purpose,
-    required String otp,
-  });
-
   Future<AuthActionResult> resetPassword({
     required String email,
     required String otp,
@@ -62,8 +51,6 @@ abstract interface class AuthRepository {
     required String otp,
     required String username,
   });
-
-  Future<String> ping();
 
   Future<void> clearSession();
 }

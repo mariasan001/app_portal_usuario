@@ -14,8 +14,8 @@ class TokenPage extends ConsumerStatefulWidget {
     super.key,
     required this.backRoute,
     required this.nextRoute,
+    required this.flow,
     this.email,
-    this.flow = 'generic',
     this.username = '',
     this.enrollmentId = '',
   });
@@ -40,7 +40,6 @@ class _TokenPageState extends ConsumerState<TokenPage> {
   late String _enrollmentId;
 
   bool get _isDeviceEnrollmentFlow => widget.flow == 'device-enroll';
-  bool get _isPasswordResetFlow => widget.flow == 'password-reset';
 
   @override
   void initState() {
@@ -116,21 +115,13 @@ class _TokenPageState extends ConsumerState<TokenPage> {
       return;
     }
 
-    if (_isPasswordResetFlow) {
-      context.go(
-        widget.nextRoute,
-        extra: {
-          'email': widget.email ?? '',
-          'token': code,
-          'backRoute': '/token',
-        },
-      );
-      return;
-    }
-
     context.go(
       widget.nextRoute,
-      extra: {'email': widget.email ?? '', 'token': code},
+      extra: {
+        'email': widget.email ?? '',
+        'token': code,
+        'backRoute': '/token',
+      },
     );
   }
 
@@ -166,7 +157,7 @@ class _TokenPageState extends ConsumerState<TokenPage> {
       }
     }
 
-    if (_isPasswordResetFlow) {
+    if (!_isDeviceEnrollmentFlow) {
       final email = (widget.email ?? '').trim();
       if (email.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -211,13 +202,9 @@ class _TokenPageState extends ConsumerState<TokenPage> {
 
     final subtitle = _isDeviceEnrollmentFlow
         ? 'Tu cuenta requiere validar este dispositivo.\nIngresa el codigo OTP para continuar.'
-        : _isPasswordResetFlow
-        ? (email.isNotEmpty
-              ? 'Enviamos un codigo de recuperacion a:\n$email'
-              : 'Enviamos un codigo de recuperacion.\nEscribelo para continuar.')
         : (email.isNotEmpty
-              ? 'Enviamos un codigo de 6 digitos a:\n$email'
-              : 'Enviamos un codigo a tu correo.\nEscribelo para continuar.');
+              ? 'Enviamos un codigo de recuperacion a:\n$email'
+              : 'Enviamos un codigo de recuperacion.\nEscribelo para continuar.');
 
     return AuthShell(
       backgroundAsset: 'assets/img/fondo.png',
@@ -228,15 +215,11 @@ class _TokenPageState extends ConsumerState<TokenPage> {
       fallbackBackRoute: widget.backRoute,
       titulo: _isDeviceEnrollmentFlow
           ? 'Autoriza este dispositivo'
-          : _isPasswordResetFlow
-          ? 'Verifica tu recuperacion'
           : 'Verifica tu codigo',
       subtitulo: subtitle,
       primaryText: _isDeviceEnrollmentFlow
           ? 'Confirmar dispositivo'
-          : _isPasswordResetFlow
-          ? 'Continuar'
-          : 'Verificar codigo',
+          : 'Continuar',
       onPrimary: _verificar,
       footer: Column(
         children: [

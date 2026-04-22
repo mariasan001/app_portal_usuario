@@ -96,6 +96,11 @@ Con esta estructura, si cambia la API normalmente ajustamos `dto`,
 2. pantalla de token -> usuario captura OTP
 3. pantalla nueva contrasena -> `resetPassword`
 
+Nota:
+el flujo actual no usa `otp/request`, `otp/verify` ni `ping`; se retiraron para
+mantener esta sesion enfocada solo en login, registro, recuperacion y control
+de dispositivo.
+
 ## Nota importante
 
 No todo archivo necesita mucha logica. Algunos existen para que el modulo sea:

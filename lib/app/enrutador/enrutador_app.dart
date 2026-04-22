@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:portal_servicios_usuario/app/funcionalidades/ayuda/ayuda_page.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contrase%C3%B1a/RecuperarPasswordPage.dart';
+import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contrase%C3%B1a/recuperar_password_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contrase%C3%B1a/nueva_contrasena_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/login/login_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/registro/registro_page.dart';
@@ -61,7 +61,7 @@ class EnrutadorApp {
           final backRoute = (extra['backRoute'] ?? '/login') as String;
           final nextRoute = (extra['nextRoute'] ?? '/home') as String;
           final email = (extra['email'] ?? '') as String;
-          final flow = (extra['flow'] ?? 'generic') as String;
+          final flow = (extra['flow'] ?? 'password-reset') as String;
           final username = (extra['username'] ?? '') as String;
           final enrollmentId = (extra['enrollmentId'] ?? '') as String;
 

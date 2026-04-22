@@ -59,32 +59,6 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<AuthActionResult> requestOtp({
-    required String usernameOrEmail,
-    required String purpose,
-  }) async {
-    final response = await _remoteDataSource.requestOtp(
-      usernameOrEmail: usernameOrEmail,
-      purpose: purpose,
-    );
-    return response.toDomain();
-  }
-
-  @override
-  Future<AuthActionResult> verifyOtp({
-    required String usernameOrEmail,
-    required String purpose,
-    required String otp,
-  }) async {
-    final response = await _remoteDataSource.verifyOtp(
-      usernameOrEmail: usernameOrEmail,
-      purpose: purpose,
-      otp: otp,
-    );
-    return response.toDomain();
-  }
-
-  @override
   Future<AuthActionResult> resetPassword({
     required String email,
     required String otp,
@@ -141,9 +115,6 @@ class AuthRepositoryImpl implements AuthRepository {
     );
     return response.toDomain();
   }
-
-  @override
-  Future<String> ping() => _remoteDataSource.ping();
 
   @override
   Future<void> clearSession() => _remoteDataSource.clearSession();

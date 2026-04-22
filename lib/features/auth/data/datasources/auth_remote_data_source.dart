@@ -1,11 +1,7 @@
-import 'dart:convert';
-
-import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
-
 import '../../../../core/config/app_endpoints.dart';
 import '../../../../core/device/models/app_device_info.dart';
 import '../../../../core/network/api_client.dart';
+import '../dtos/auth_action_response_dto.dart';
 import '../dtos/auth_user_dto.dart';
 import '../dtos/device_check_request_dto.dart';
 import '../dtos/device_check_response_dto.dart';
@@ -16,12 +12,9 @@ import '../dtos/device_enrollment_request_response_dto.dart';
 import '../dtos/forgot_password_request_dto.dart';
 import '../dtos/login_request_dto.dart';
 import '../dtos/login_response_dto.dart';
-import '../dtos/otp_request_request_dto.dart';
-import '../dtos/otp_verify_request_dto.dart';
 import '../dtos/register_request_dto.dart';
 import '../dtos/register_response_dto.dart';
 import '../dtos/reset_password_request_dto.dart';
-import '../dtos/auth_action_response_dto.dart';
 
 /// DataSource = capa que SI habla HTTP.
 ///
@@ -43,17 +36,6 @@ abstract interface class AuthRemoteDataSource {
   });
 
   Future<AuthActionResponseDto> forgotPassword({required String email});
-
-  Future<AuthActionResponseDto> requestOtp({
-    required String usernameOrEmail,
-    required String purpose,
-  });
-
-  Future<AuthActionResponseDto> verifyOtp({
-    required String usernameOrEmail,
-    required String purpose,
-    required String otp,
-  });
 
   Future<AuthActionResponseDto> resetPassword({
     required String email,
@@ -78,8 +60,6 @@ abstract interface class AuthRemoteDataSource {
     required String otp,
     required String username,
   });
-
-  Future<String> ping();
 
   Future<void> clearSession();
 }
@@ -129,75 +109,25 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       password: password,
       phone: phone,
     );
-    _debugLogJson('auth.register.request', payload.toJson());
 
     final data = await _apiClient.post<Object?>(
       IamEndpoints.register,
       data: payload.toJson(),
     );
 
-    final responseJson = _readJsonMap(data);
-    _debugLogJson('auth.register.response', responseJson);
-    return RegisterResponseDto.fromJson(responseJson);
+    return RegisterResponseDto.fromJson(_readJsonMap(data));
   }
 
   @override
   Future<AuthActionResponseDto> forgotPassword({required String email}) async {
     final payload = ForgotPasswordRequestDto(email: email);
-    _debugLogJson('auth.password.forgot.request', payload.toJson());
 
     final data = await _apiClient.post<Object?>(
       IamEndpoints.passwordForgot,
       data: payload.toJson(),
     );
 
-    final responseJson = _readJsonMap(data);
-    _debugLogJson('auth.password.forgot.response', responseJson);
-    return AuthActionResponseDto.fromJson(responseJson);
-  }
-
-  @override
-  Future<AuthActionResponseDto> requestOtp({
-    required String usernameOrEmail,
-    required String purpose,
-  }) async {
-    final payload = OtpRequestRequestDto(
-      usernameOrEmail: usernameOrEmail,
-      purpose: purpose,
-    );
-    _debugLogJson('auth.otp.request.request', payload.toJson());
-
-    final data = await _apiClient.post<Object?>(
-      IamEndpoints.otpRequest,
-      data: payload.toJson(),
-    );
-
-    final responseJson = _readJsonMap(data);
-    _debugLogJson('auth.otp.request.response', responseJson);
-    return AuthActionResponseDto.fromJson(responseJson);
-  }
-
-  @override
-  Future<AuthActionResponseDto> verifyOtp({
-    required String usernameOrEmail,
-    required String purpose,
-    required String otp,
-  }) async {
-    final payload = OtpVerifyRequestDto(
-      usernameOrEmail: usernameOrEmail,
-      purpose: purpose,
-      otp: otp,
-    );
-    _debugLogJson('auth.otp.verify.request', payload.toJson());
-
-    final data = await _apiClient.post<Object?>(
-      IamEndpoints.otpVerify,
-      data: payload.toJson(),
-    );
-
-    final responseJson = _readJsonMap(data);
-    _debugLogJson('auth.otp.verify.response', responseJson);
-    return AuthActionResponseDto.fromJson(responseJson);
+    return AuthActionResponseDto.fromJson(_readJsonMap(data));
   }
 
   @override
@@ -211,16 +141,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       otp: otp,
       newPassword: newPassword,
     );
-    _debugLogJson('auth.password.reset.request', payload.toJson());
 
     final data = await _apiClient.post<Object?>(
       IamEndpoints.passwordReset,
       data: payload.toJson(),
     );
 
-    final responseJson = _readJsonMap(data);
-    _debugLogJson('auth.password.reset.response', responseJson);
-    return AuthActionResponseDto.fromJson(responseJson);
+    return AuthActionResponseDto.fromJson(_readJsonMap(data));
   }
 
   @override
@@ -238,16 +165,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       username: username,
       device: device,
     );
-    _debugLogJson('device.check.request', payload.toJson());
 
     final data = await _apiClient.post<Object?>(
       IamEndpoints.deviceCheck,
       data: payload.toJson(),
     );
 
-    final responseJson = _readJsonMap(data);
-    _debugLogJson('device.check.response', responseJson);
-    return DeviceCheckResponseDto.fromJson(responseJson);
+    return DeviceCheckResponseDto.fromJson(_readJsonMap(data));
   }
 
   @override
@@ -259,16 +183,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       username: username,
       device: device,
     );
-    _debugLogJson('device.enroll.request', payload.toJson());
 
     final data = await _apiClient.post<Object?>(
       IamEndpoints.deviceEnrollRequest,
       data: payload.toJson(),
     );
 
-    final responseJson = _readJsonMap(data);
-    _debugLogJson('device.enroll.request.response', responseJson);
-    return DeviceEnrollmentRequestResponseDto.fromJson(responseJson);
+    return DeviceEnrollmentRequestResponseDto.fromJson(_readJsonMap(data));
   }
 
   @override
@@ -282,30 +203,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       otp: otp,
       username: username,
     );
-    _debugLogJson('device.enroll.confirm.request', payload.toJson());
 
     final data = await _apiClient.post<Object?>(
       IamEndpoints.deviceEnrollConfirm,
       data: payload.toJson(),
     );
 
-    final responseJson = _readJsonMap(data);
-    _debugLogJson('device.enroll.confirm.response', responseJson);
-    return DeviceEnrollmentConfirmResponseDto.fromJson(responseJson);
-  }
-
-  @override
-  Future<String> ping() async {
-    final data = await _apiClient.get<Object?>(
-      IamEndpoints.ping,
-      options: Options(responseType: ResponseType.plain),
-    );
-
-    if (data is String) {
-      return data;
-    }
-
-    return data?.toString() ?? '';
+    return DeviceEnrollmentConfirmResponseDto.fromJson(_readJsonMap(data));
   }
 
   @override
@@ -321,15 +225,5 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     }
 
     throw StateError('La respuesta no tiene el formato JSON esperado.');
-  }
-
-  void _debugLogJson(String label, Map<String, dynamic> json) {
-    if (!kDebugMode) {
-      return;
-    }
-
-    const encoder = JsonEncoder.withIndent('  ');
-    debugPrint('[$label]');
-    debugPrint(encoder.convert(json));
   }
 }

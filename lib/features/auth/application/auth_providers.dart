@@ -11,9 +11,6 @@ import '../domain/usecases/confirm_device_enrollment_use_case.dart';
 import '../domain/usecases/forgot_password_use_case.dart';
 import '../domain/usecases/get_current_user_use_case.dart';
 import '../domain/usecases/login_use_case.dart';
-import '../domain/usecases/otp_request_use_case.dart';
-import '../domain/usecases/otp_verify_use_case.dart';
-import '../domain/usecases/ping_auth_api_use_case.dart';
 import '../domain/usecases/register_use_case.dart';
 import '../domain/usecases/reset_password_use_case.dart';
 import '../domain/usecases/request_device_enrollment_use_case.dart';
@@ -44,24 +41,12 @@ final forgotPasswordUseCaseProvider = Provider<ForgotPasswordUseCase>((ref) {
   return ForgotPasswordUseCase(ref.watch(authRepositoryProvider));
 });
 
-final otpRequestUseCaseProvider = Provider<OtpRequestUseCase>((ref) {
-  return OtpRequestUseCase(ref.watch(authRepositoryProvider));
-});
-
-final otpVerifyUseCaseProvider = Provider<OtpVerifyUseCase>((ref) {
-  return OtpVerifyUseCase(ref.watch(authRepositoryProvider));
-});
-
 final resetPasswordUseCaseProvider = Provider<ResetPasswordUseCase>((ref) {
   return ResetPasswordUseCase(ref.watch(authRepositoryProvider));
 });
 
 final getCurrentUserUseCaseProvider = Provider<GetCurrentUserUseCase>((ref) {
   return GetCurrentUserUseCase(ref.watch(authRepositoryProvider));
-});
-
-final pingAuthApiUseCaseProvider = Provider<PingAuthApiUseCase>((ref) {
-  return PingAuthApiUseCase(ref.watch(authRepositoryProvider));
 });
 
 final clearSessionUseCaseProvider = Provider<ClearSessionUseCase>((ref) {

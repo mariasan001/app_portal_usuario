@@ -5,7 +5,8 @@ class AuthBanner extends StatelessWidget {
   final String texto;
 
   // Assets
-  final String leftAsset;  // ej: assets/img/flor_d.png (la que va a la izquierda)
+  final String
+  leftAsset; // ej: assets/img/flor_d.png (la que va a la izquierda)
   final String rightAsset; // ej: assets/img/flor_i.png (la que va a la derecha)
 
   // Ajustes

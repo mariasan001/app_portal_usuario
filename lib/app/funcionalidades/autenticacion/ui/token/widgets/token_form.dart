@@ -4,16 +4,16 @@ import 'package:flutter/services.dart';
 import '../../../../../tema/colores.dart';
 
 class TokenForm extends StatefulWidget {
-  final GlobalKey<FormState> formKey;
-  final TextEditingController codeCtrl;
-  final Future<void> Function() onSubmit;
-
   const TokenForm({
     super.key,
     required this.formKey,
     required this.codeCtrl,
     required this.onSubmit,
   });
+
+  final GlobalKey<FormState> formKey;
+  final TextEditingController codeCtrl;
+  final Future<void> Function() onSubmit;
 
   @override
   State<TokenForm> createState() => _TokenFormState();
@@ -27,7 +27,6 @@ class _TokenFormState extends State<TokenForm> {
   @override
   void initState() {
     super.initState();
-    // Auto focus suave
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focus.requestFocus();
     });
@@ -56,7 +55,7 @@ class _TokenFormState extends State<TokenForm> {
       key: widget.formKey,
       child: Column(
         children: [
-          // ✅ Input invisible (captura teclado) + UI de círculos
+          // Input invisible para capturar teclado manteniendo la UI visual.
           GestureDetector(
             onTap: _tapFocus,
             behavior: HitTestBehavior.translucent,
@@ -80,15 +79,15 @@ class _TokenFormState extends State<TokenForm> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: filled
-                              ? ColoresApp.vino.withOpacity(0.08)
+                              ? ColoresApp.vino.withValues(alpha: 0.08)
                               : const Color(0xFFF3F3F3),
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
                             color: active
                                 ? ColoresApp.vino
                                 : filled
-                                    ? ColoresApp.vino.withOpacity(0.35)
-                                    : const Color(0x14000000),
+                                ? ColoresApp.vino.withValues(alpha: 0.35)
+                                : const Color(0x14000000),
                             width: active ? 2.0 : 1.2,
                           ),
                         ),
@@ -100,14 +99,12 @@ class _TokenFormState extends State<TokenForm> {
                             letterSpacing: 1.0,
                             fontSize: 18,
                           ),
-                          child: Text(ch.isEmpty ? '•' : ch),
+                          child: Text(ch.isEmpty ? '.' : ch),
                         ),
                       );
                     }),
                   ),
                 ),
-
-                // Campo real (invisible) para manejar teclado/validación
                 Opacity(
                   opacity: 0,
                   child: SizedBox(
@@ -118,20 +115,20 @@ class _TokenFormState extends State<TokenForm> {
                       controller: widget.codeCtrl,
                       keyboardType: TextInputType.number,
                       textInputAction: TextInputAction.done,
-                      inputFormatters:  [
+                      inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(_len),
                       ],
                       validator: (v) {
                         final s = (v ?? '').trim();
-                        if (s.isEmpty) return 'Ingresa el código';
-                        if (s.length != _len) return 'Debe tener $_len dígitos';
+                        if (s.isEmpty) return 'Ingresa el codigo';
+                        if (s.length != _len) return 'Debe tener $_len digitos';
                         return null;
                       },
                       onChanged: (v) {
                         final s = v.trim();
                         if (s.length == _len) {
-                          widget.onSubmit(); // auto-submit cuando completa
+                          widget.onSubmit();
                         }
                       },
                     ),
@@ -140,11 +137,9 @@ class _TokenFormState extends State<TokenForm> {
               ],
             ),
           ),
-
           const SizedBox(height: 10),
-
           Text(
-            'Toca los cuadros para escribir el código.',
+            'Toca los cuadros para escribir el codigo.',
             textAlign: TextAlign.center,
             style: t.bodySmall?.copyWith(
               color: ColoresApp.textoSuave,
