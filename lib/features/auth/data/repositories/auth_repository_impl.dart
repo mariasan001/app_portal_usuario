@@ -1,11 +1,11 @@
 import '../../../../core/device/models/app_device_info.dart';
-import '../../domain/entities/auth_action_result.dart';
-import '../../domain/entities/auth_user.dart';
-import '../../domain/entities/device_check_result.dart';
-import '../../domain/entities/device_enrollment_confirm_result.dart';
-import '../../domain/entities/device_enrollment_request_result.dart';
-import '../../domain/entities/login_result.dart';
-import '../../domain/entities/register_result.dart';
+import '../../domain/entities/device/device_check_result.dart';
+import '../../domain/entities/device/device_enrollment_confirm_result.dart';
+import '../../domain/entities/device/device_enrollment_request_result.dart';
+import '../../domain/entities/recovery/auth_action_result.dart';
+import '../../domain/entities/session/auth_user.dart';
+import '../../domain/entities/session/login_result.dart';
+import '../../domain/entities/session/register_result.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_data_source.dart';
 

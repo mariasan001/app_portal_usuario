@@ -1,16 +1,13 @@
-import '../domain/entities/device_check_result.dart';
+import '../domain/entities/device/device_check_result.dart';
 
 abstract final class AuthCopy {
   static const loginWelcomeSubtitle =
       'Inicia sesion para consultar tu informacion y continuar con tus servicios.';
-
   static const loginUnexpectedError =
       'No pudimos iniciar sesion. Intenta nuevamente.';
-
   static const registerSuccess =
       'Tu cuenta fue creada. Ya puedes iniciar sesion.';
   static const registerFailed = 'No pudimos completar tu registro.';
-
   static const recoveryCodeSent =
       'Te enviamos un codigo de verificacion a tu correo.';
   static const recoveryCodeResent =
@@ -19,11 +16,9 @@ abstract final class AuthCopy {
       'No pudimos enviar el codigo de verificacion.';
   static const missingRecoveryEmail =
       'Escribe tu correo para reenviar el codigo.';
-
   static const passwordResetSuccess =
       'Tu contrasena fue actualizada. Inicia sesion nuevamente.';
   static const passwordResetFailed = 'No pudimos actualizar tu contrasena.';
-
   static const identitySetupMissing =
       'No pudimos preparar la verificacion de identidad. Intenta nuevamente.';
   static const identityDataMissing =
@@ -38,7 +33,6 @@ abstract final class AuthCopy {
       'Identidad verificada. Ya puedes iniciar sesion.';
   static const identityVerificationFailed =
       'No pudimos completar la verificacion de identidad.';
-
   static const deviceVerificationTitle = 'Verifica tu identidad';
   static const deviceVerificationSubtitle =
       'Para proteger tu cuenta, confirma tu identidad con el codigo que te enviamos.';

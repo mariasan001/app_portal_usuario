@@ -2,11 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/device/models/app_device_info.dart';
 import '../../../../core/network/api_exception.dart';
-import '../domain/entities/auth_action_result.dart';
-import '../domain/entities/device_check_result.dart';
-import '../domain/entities/device_enrollment_confirm_result.dart';
-import '../domain/entities/device_enrollment_request_result.dart';
-import '../domain/entities/register_result.dart';
+import '../domain/entities/device/device_check_result.dart';
+import '../domain/entities/device/device_enrollment_confirm_result.dart';
+import '../domain/entities/device/device_enrollment_request_result.dart';
+import '../domain/entities/recovery/auth_action_result.dart';
+import '../domain/entities/session/register_result.dart';
 import '../ui/auth_copy.dart';
 import 'auth_device_messages.dart';
 import 'auth_providers.dart';

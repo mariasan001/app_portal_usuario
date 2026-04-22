@@ -5,13 +5,13 @@ import 'package:portal_servicios_usuario/core/device/device_metadata_collector.d
 import 'package:portal_servicios_usuario/core/device/models/app_device_info.dart';
 import 'package:portal_servicios_usuario/core/network/api_exception.dart';
 import 'package:portal_servicios_usuario/features/auth/application/auth_providers.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/auth_action_result.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/auth_user.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/device_check_result.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/device_enrollment_confirm_result.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/device_enrollment_request_result.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/login_result.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/register_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/device/device_check_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/device/device_enrollment_confirm_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/device/device_enrollment_request_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/recovery/auth_action_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/session/auth_user.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/session/login_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/session/register_result.dart';
 import 'package:portal_servicios_usuario/features/auth/domain/repositories/auth_repository.dart';
 
 void main() {
