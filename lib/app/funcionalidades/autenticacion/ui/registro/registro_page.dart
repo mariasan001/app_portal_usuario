@@ -1,71 +1,98 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../features/auth/application/auth_providers.dart';
+import '../../../../../features/auth/application/auth_state.dart';
 import '../../../../tema/colores.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/registro_form.dart';
 
-class RegistroPage extends StatefulWidget {
+class RegistroPage extends ConsumerStatefulWidget {
   const RegistroPage({super.key});
 
   @override
-  State<RegistroPage> createState() => _RegistroPageState();
+  ConsumerState<RegistroPage> createState() => _RegistroPageState();
 }
 
-class _RegistroPageState extends State<RegistroPage> {
+class _RegistroPageState extends ConsumerState<RegistroPage> {
   final _formKey = GlobalKey<FormState>();
-  final _userCtrl = TextEditingController();
-  final _mailCtrl = TextEditingController();
+  final _claveSpCtrl = TextEditingController();
+  final _plazaCtrl = TextEditingController();
+  final _puestoCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _userCtrl.dispose();
-    _mailCtrl.dispose();
+    _claveSpCtrl.dispose();
+    _plazaCtrl.dispose();
+    _puestoCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    _phoneCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _enviarToken() async {
+  Future<void> _registrar() async {
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) return;
 
-    final user = _userCtrl.text.trim();
-    final email = _mailCtrl.text.trim();
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .register(
+          claveSp: _claveSpCtrl.text.trim(),
+          plaza: _plazaCtrl.text.trim(),
+          puesto: _puestoCtrl.text.trim(),
+          email: _emailCtrl.text.trim(),
+          password: _passwordCtrl.text.trim(),
+          phone: _phoneCtrl.text.trim(),
+        );
 
-    debugPrint('REGISTRO -> user: $user, email: $email');
+    if (result == null || !mounted) return;
 
-    context.go('/token');
+    final message = result.message.trim().isEmpty
+        ? 'Registro completado. Ahora puedes iniciar sesion.'
+        : result.message.trim();
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+    context.go('/login');
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authControllerProvider, (previous, next) {
+      if (!mounted) return;
+
+      final previousError = previous?.errorMessage;
+      final nextError = next.errorMessage;
+      if (nextError != null && nextError != previousError) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(nextError)));
+        ref.read(authControllerProvider.notifier).clearFeedback();
+      }
+    });
+
     final t = Theme.of(context).textTheme;
+    final authState = ref.watch(authControllerProvider);
 
     return AuthShell(
       backgroundAsset: 'assets/img/fondo.png',
-      overlayOpacity: 0.10, // mantiene el fondo con contraste como login
-
-      // ✅ Back arriba (tu AuthShell lo dibuja)
+      overlayOpacity: 0.10,
       showBack: true,
       onBack: () => context.go('/login'),
       fallbackBackRoute: '/login',
-
-      // ✅ Copy más “cool”
       titulo: 'Activa tu perfil',
       subtitulo:
-          'Usa tu número de servidor público y tu correo para recibir\nun código de verificación y continuar.',
-
-      // ✅ CTA con sentido (no “Ingresar”)
-      primaryText: 'Enviar código',
-      onPrimary: _enviarToken,
-
-      child: RegistroForm(
-        formKey: _formKey,
-        userCtrl: _userCtrl,
-        mailCtrl: _mailCtrl,
-        onSubmit: _enviarToken,
-      ),
-
-      // ✅ Acción abajo: volver a login
+          'Completa tu informacion laboral y de contacto para validar tu registro en la plataforma.',
+      primaryText: 'Crear cuenta',
+      onPrimary: _registrar,
+      primaryLoading: authState.isLoading,
       footer: Column(
         children: [
           const SizedBox(height: 4),
@@ -73,7 +100,7 @@ class _RegistroPageState extends State<RegistroPage> {
             TextSpan(
               children: [
                 TextSpan(
-                  text: '¿Ya tienes cuenta? ',
+                  text: 'Ya tienes cuenta? ',
                   style: t.bodySmall?.copyWith(
                     color: ColoresApp.texto,
                     fontWeight: FontWeight.w600,
@@ -85,9 +112,12 @@ class _RegistroPageState extends State<RegistroPage> {
                     onTap: () => context.go('/login'),
                     borderRadius: BorderRadius.circular(999),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
                       child: Text(
-                        'Inicia sesión',
+                        'Inicia sesion',
                         style: t.bodySmall?.copyWith(
                           color: ColoresApp.vino,
                           fontWeight: FontWeight.w800,
@@ -107,6 +137,16 @@ class _RegistroPageState extends State<RegistroPage> {
             style: t.bodySmall?.copyWith(color: ColoresApp.textoSuave),
           ),
         ],
+      ),
+      child: RegistroForm(
+        formKey: _formKey,
+        claveSpCtrl: _claveSpCtrl,
+        plazaCtrl: _plazaCtrl,
+        puestoCtrl: _puestoCtrl,
+        emailCtrl: _emailCtrl,
+        passwordCtrl: _passwordCtrl,
+        phoneCtrl: _phoneCtrl,
+        onSubmit: _registrar,
       ),
     );
   }

@@ -1,5 +1,8 @@
 import '../../../../core/config/app_environment.dart';
 
+/// DTO de request = formato exacto que la API espera al hacer login.
+///
+/// Se separa del dominio para que cambios del backend no contaminen toda la app.
 class LoginRequestDto {
   const LoginRequestDto({
     required this.username,

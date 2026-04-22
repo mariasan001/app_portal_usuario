@@ -1,5 +1,13 @@
 import '../domain/entities/auth_user.dart';
+import '../domain/entities/device_check_result.dart';
 
+/// Estado observable del modulo de autenticacion.
+///
+/// La UI mira este objeto para saber:
+/// - si hay sesion
+/// - si hay loading
+/// - si hubo error
+/// - si quedo algo pendiente, como enrolamiento de dispositivo
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
 class AuthState {
@@ -9,6 +17,9 @@ class AuthState {
     this.isLoading = false,
     this.errorMessage,
     this.infoMessage,
+    this.pendingUsername,
+    this.pendingEnrollmentId,
+    this.deviceCheckResult,
   });
 
   const AuthState.unknown() : this(status: AuthStatus.unknown);
@@ -32,6 +43,9 @@ class AuthState {
   final bool isLoading;
   final String? errorMessage;
   final String? infoMessage;
+  final String? pendingUsername;
+  final String? pendingEnrollmentId;
+  final DeviceCheckResult? deviceCheckResult;
 
   bool get isAuthenticated => status == AuthStatus.authenticated;
 
@@ -41,9 +55,15 @@ class AuthState {
     bool? isLoading,
     String? errorMessage,
     String? infoMessage,
+    String? pendingUsername,
+    String? pendingEnrollmentId,
+    DeviceCheckResult? deviceCheckResult,
     bool clearUser = false,
     bool clearErrorMessage = false,
     bool clearInfoMessage = false,
+    bool clearPendingUsername = false,
+    bool clearPendingEnrollmentId = false,
+    bool clearDeviceCheckResult = false,
   }) {
     return AuthState(
       status: status ?? this.status,
@@ -53,6 +73,15 @@ class AuthState {
           ? null
           : (errorMessage ?? this.errorMessage),
       infoMessage: clearInfoMessage ? null : (infoMessage ?? this.infoMessage),
+      pendingUsername: clearPendingUsername
+          ? null
+          : (pendingUsername ?? this.pendingUsername),
+      pendingEnrollmentId: clearPendingEnrollmentId
+          ? null
+          : (pendingEnrollmentId ?? this.pendingEnrollmentId),
+      deviceCheckResult: clearDeviceCheckResult
+          ? null
+          : (deviceCheckResult ?? this.deviceCheckResult),
     );
   }
 }

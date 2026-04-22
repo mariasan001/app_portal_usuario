@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../features/auth/application/auth_providers.dart';
+import '../../../../../features/auth/application/auth_state.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/recuperar_password_form.dart';
 
-class RecuperarPasswordPage extends StatefulWidget {
+class RecuperarPasswordPage extends ConsumerStatefulWidget {
   const RecuperarPasswordPage({super.key});
 
   @override
-  State<RecuperarPasswordPage> createState() => _RecuperarPasswordPageState();
+  ConsumerState<RecuperarPasswordPage> createState() =>
+      _RecuperarPasswordPageState();
 }
 
-class _RecuperarPasswordPageState extends State<RecuperarPasswordPage> {
+class _RecuperarPasswordPageState extends ConsumerState<RecuperarPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _mailCtrl = TextEditingController();
 
@@ -26,51 +30,75 @@ class _RecuperarPasswordPageState extends State<RecuperarPasswordPage> {
     if (!ok) return;
 
     final email = _mailCtrl.text.trim();
-    debugPrint('RECUPERAR -> email: $email');
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .forgotPassword(email: email);
 
-    // TODO: API real -> enviar token al correo
-    // await authService.forgotPassword(email);
+    if (result == null || !mounted) {
+      return;
+    }
 
-    // ✅ aquí usamos tu MISMA TokenPage (la de círculos)
-    context.go('/token', extra: {
-      'flow': 'reset',
-      'email': email,
-      'backRoute': '/recuperar',
-      'nextRoute': '/nueva-contrasena',
-    });
+    final message = result.message.trim().isEmpty
+        ? 'Te enviamos un codigo de recuperacion.'
+        : result.message.trim();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+
+    context.go(
+      '/token',
+      extra: {
+        'flow': 'password-reset',
+        'email': email,
+        'backRoute': '/recuperar',
+        'nextRoute': '/nueva-contrasena',
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authControllerProvider, (previous, next) {
+      if (!mounted) return;
+
+      final previousError = previous?.errorMessage;
+      final nextError = next.errorMessage;
+      if (nextError != null && nextError != previousError) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(nextError)));
+        ref.read(authControllerProvider.notifier).clearFeedback();
+      }
+    });
+
+    final authState = ref.watch(authControllerProvider);
+
     return AuthShell(
       backgroundAsset: 'assets/img/fondo.png',
       overlayOpacity: 0.10,
-
       showBack: true,
       onBack: () => context.go('/login'),
       fallbackBackRoute: '/login',
-
       titulo: 'Recupera tu acceso',
       subtitulo:
-          'Escribe el correo con el que te registraste\npara enviarte un código de verificación.',
-
-      primaryText: 'Enviar código',
+          'Escribe el correo con el que te registraste\npara enviarte un codigo de verificacion.',
+      primaryText: 'Enviar codigo',
       onPrimary: _enviarCodigo,
-
-  child: RecuperarPasswordForm(
-  formKey: _formKey,
-  mailCtrl: _mailCtrl,
-  onSubmit: () => _enviarCodigo(),
-),
-
+      primaryLoading: authState.isLoading,
       footer: TextButton(
         onPressed: () => context.go('/login'),
         child: Text(
-          'Volver a iniciar sesión',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          'Volver a iniciar sesion',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
         ),
+      ),
+      child: RecuperarPasswordForm(
+        formKey: _formKey,
+        mailCtrl: _mailCtrl,
+        onSubmit: _enviarCodigo,
       ),
     );
   }

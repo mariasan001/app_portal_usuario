@@ -19,6 +19,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _userCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  bool _startingEnrollment = false;
 
   @override
   void dispose() {
@@ -39,6 +40,57 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         );
   }
 
+  Future<void> _startDeviceEnrollment(String username) async {
+    if (_startingEnrollment) return;
+
+    setState(() => _startingEnrollment = true);
+
+    try {
+      final result = await ref
+          .read(authControllerProvider.notifier)
+          .requestDeviceEnrollment(username: username);
+
+      if (!mounted) return;
+
+      final enrollmentId = (result.enrollmentId ?? '').trim();
+      if (enrollmentId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'La API no devolvio enrollmentId para continuar el enrolamiento.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      context.go(
+        '/token',
+        extra: {
+          'flow': 'device-enroll',
+          'username': username,
+          'enrollmentId': enrollmentId,
+          'backRoute': '/login',
+          'nextRoute': '/login',
+        },
+      );
+    } catch (_) {
+      if (!mounted) return;
+      final message =
+          ref.read(authControllerProvider).errorMessage ??
+          'No se pudo iniciar el enrolamiento del dispositivo.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) {
+        setState(() => _startingEnrollment = false);
+      } else {
+        _startingEnrollment = false;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authControllerProvider, (previous, next) {
@@ -54,6 +106,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ref.read(authControllerProvider.notifier).clearFeedback();
       }
 
+      final previousDeviceCode = previous?.deviceCheckResult?.rawCode;
+      final nextDeviceResult = next.deviceCheckResult;
+      if (nextDeviceResult != null &&
+          nextDeviceResult.requiresEnrollment &&
+          nextDeviceResult.rawCode != previousDeviceCode) {
+        final username = (next.pendingUsername ?? '').trim();
+        if (username.isNotEmpty) {
+          _startDeviceEnrollment(username);
+        }
+      }
+
       final wasAuthenticated = previous?.isAuthenticated ?? false;
       if (next.isAuthenticated && !wasAuthenticated) {
         context.go('/home');
@@ -66,7 +129,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return AuthShell(
       backgroundAsset: 'assets/img/fondo.png',
       overlayOpacity: 0.10,
-      primaryLoading: authState.isLoading,
+      primaryLoading: authState.isLoading || _startingEnrollment,
       childTop: Row(
         children: [
           Expanded(
@@ -94,7 +157,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       ),
       titulo: 'Bienvenido a tu espacio\ndigital',
       subtitulo:
-          'Inicia sesión para acceder a tus recibos, movimientos\ny normativas vigentes.',
+          'Inicia sesion para acceder a tus recibos, movimientos\ny normativas vigentes.',
       primaryText: 'Entrar a mi perfil',
       onPrimary: _login,
       footer: Column(
@@ -103,7 +166,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             TextSpan(
               children: [
                 TextSpan(
-                  text: '¿Aún no tienes cuenta? ',
+                  text: 'Aun no tienes cuenta? ',
                   style: t.bodySmall?.copyWith(
                     color: ColoresApp.texto,
                     fontWeight: FontWeight.w600,
@@ -141,7 +204,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Desarrollado por Oficialía Mayor . Dirección General del Personal',
+            'Desarrollado por Oficialia Mayor . Direccion General del Personal',
             textAlign: TextAlign.center,
             style: t.bodySmall?.copyWith(
               fontSize: 10.6,

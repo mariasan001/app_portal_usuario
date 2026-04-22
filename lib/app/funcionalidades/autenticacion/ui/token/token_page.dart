@@ -1,37 +1,51 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../features/auth/application/auth_providers.dart';
 import '../../../../tema/colores.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/token_form.dart';
 
-class TokenPage extends StatefulWidget {
-  final String backRoute; // ej: /registro o /recuperar
-  final String nextRoute; // ej: /crear-password o /nueva-contrasena
-  final String? email;    // opcional (para mostrar/reenviar)
-
+class TokenPage extends ConsumerStatefulWidget {
   const TokenPage({
     super.key,
     required this.backRoute,
     required this.nextRoute,
     this.email,
+    this.flow = 'generic',
+    this.username = '',
+    this.enrollmentId = '',
   });
 
+  final String backRoute;
+  final String nextRoute;
+  final String? email;
+  final String flow;
+  final String username;
+  final String enrollmentId;
+
   @override
-  State<TokenPage> createState() => _TokenPageState();
+  ConsumerState<TokenPage> createState() => _TokenPageState();
 }
 
-class _TokenPageState extends State<TokenPage> {
+class _TokenPageState extends ConsumerState<TokenPage> {
   final _formKey = GlobalKey<FormState>();
   final _codeCtrl = TextEditingController();
 
   Timer? _timer;
   int _seconds = 40;
+  late String _enrollmentId;
+
+  bool get _isDeviceEnrollmentFlow => widget.flow == 'device-enroll';
+  bool get _isPasswordResetFlow => widget.flow == 'password-reset';
 
   @override
   void initState() {
     super.initState();
+    _enrollmentId = widget.enrollmentId;
     _startTimer();
   }
 
@@ -39,10 +53,10 @@ class _TokenPageState extends State<TokenPage> {
     _timer?.cancel();
     setState(() => _seconds = 40);
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       if (_seconds <= 1) {
-        t.cancel();
+        timer.cancel();
         setState(() => _seconds = 0);
       } else {
         setState(() => _seconds--);
@@ -62,59 +76,171 @@ class _TokenPageState extends State<TokenPage> {
     if (!ok) return;
 
     final code = _codeCtrl.text.trim();
-    debugPrint('TOKEN -> code: $code, email: ${widget.email ?? ''}');
 
-    // TODO: aquí conectas API real (registro o reset)
-    // await authService.verificarToken(code);
+    if (_isDeviceEnrollmentFlow) {
+      if (_enrollmentId.trim().isEmpty || widget.username.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Falta informacion para confirmar el dispositivo.'),
+          ),
+        );
+        return;
+      }
 
-    // ✅ Avanza a la ruta que toque (registro o reset)
-    context.go(widget.nextRoute, extra: {
-      'email': widget.email ?? '',
-      'token': code,
-    });
+      try {
+        final result = await ref
+            .read(authControllerProvider.notifier)
+            .confirmDeviceEnrollment(
+              enrollmentId: _enrollmentId,
+              otp: code,
+              username: widget.username,
+            );
+
+        if (!mounted) return;
+        final message = result.message.trim().isEmpty
+            ? 'Dispositivo enrolado correctamente. Ahora inicia sesion.'
+            : result.message.trim();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+        context.go('/login');
+      } catch (_) {
+        if (!mounted) return;
+        final message =
+            ref.read(authControllerProvider).errorMessage ??
+            'No se pudo confirmar el enrolamiento del dispositivo.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+      return;
+    }
+
+    if (_isPasswordResetFlow) {
+      context.go(
+        widget.nextRoute,
+        extra: {
+          'email': widget.email ?? '',
+          'token': code,
+          'backRoute': '/token',
+        },
+      );
+      return;
+    }
+
+    context.go(
+      widget.nextRoute,
+      extra: {'email': widget.email ?? '', 'token': code},
+    );
   }
 
   Future<void> _reenviar() async {
     if (_seconds > 0) return;
 
-    debugPrint('REENVIAR TOKEN -> email: ${widget.email ?? ''}');
-    // TODO: llamar API reenviar token (si aplica)
+    if (_isDeviceEnrollmentFlow) {
+      try {
+        final result = await ref
+            .read(authControllerProvider.notifier)
+            .requestDeviceEnrollment(username: widget.username);
+
+        if (!mounted) return;
+        final enrollmentId = (result.enrollmentId ?? '').trim();
+        if (enrollmentId.isNotEmpty) {
+          setState(() => _enrollmentId = enrollmentId);
+        }
+
+        final message = result.message.trim().isEmpty
+            ? 'Se envio un nuevo codigo para enrolar tu dispositivo.'
+            : result.message.trim();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      } catch (_) {
+        if (!mounted) return;
+        final message =
+            ref.read(authControllerProvider).errorMessage ??
+            'No se pudo reenviar el codigo del enrolamiento.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    }
+
+    if (_isPasswordResetFlow) {
+      final email = (widget.email ?? '').trim();
+      if (email.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Falta el correo para reenviar el codigo.'),
+          ),
+        );
+        return;
+      }
+
+      final result = await ref
+          .read(authControllerProvider.notifier)
+          .forgotPassword(email: email);
+
+      if (!mounted) return;
+      if (result == null) {
+        final message =
+            ref.read(authControllerProvider).errorMessage ??
+            'No se pudo reenviar el codigo de recuperacion.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+        return;
+      }
+
+      final message = result.message.trim().isEmpty
+          ? 'Te enviamos un nuevo codigo de recuperacion.'
+          : result.message.trim();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+
     _startTimer();
   }
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final authState = ref.watch(authControllerProvider);
+    final email = (widget.email ?? '').trim();
 
-    final correo = (widget.email ?? '').trim();
+    final subtitle = _isDeviceEnrollmentFlow
+        ? 'Tu cuenta requiere validar este dispositivo.\nIngresa el codigo OTP para continuar.'
+        : _isPasswordResetFlow
+        ? (email.isNotEmpty
+              ? 'Enviamos un codigo de recuperacion a:\n$email'
+              : 'Enviamos un codigo de recuperacion.\nEscribelo para continuar.')
+        : (email.isNotEmpty
+              ? 'Enviamos un codigo de 6 digitos a:\n$email'
+              : 'Enviamos un codigo a tu correo.\nEscribelo para continuar.');
 
     return AuthShell(
       backgroundAsset: 'assets/img/fondo.png',
       overlayOpacity: 0.10,
-
+      primaryLoading: authState.isLoading,
       showBack: true,
       onBack: () => context.go(widget.backRoute),
       fallbackBackRoute: widget.backRoute,
-
-      titulo: 'Verifica tu código',
-      subtitulo: correo.isNotEmpty
-          ? 'Enviamos un código de 6 dígitos a:\n$correo'
-          : 'Enviamos un código a tu correo.\nEscríbelo para continuar.',
-
-      primaryText: 'Verificar código',
+      titulo: _isDeviceEnrollmentFlow
+          ? 'Autoriza este dispositivo'
+          : _isPasswordResetFlow
+          ? 'Verifica tu recuperacion'
+          : 'Verifica tu codigo',
+      subtitulo: subtitle,
+      primaryText: _isDeviceEnrollmentFlow
+          ? 'Confirmar dispositivo'
+          : _isPasswordResetFlow
+          ? 'Continuar'
+          : 'Verificar codigo',
       onPrimary: _verificar,
-
-      child: TokenForm(
-        formKey: _formKey,
-        codeCtrl: _codeCtrl,
-        onSubmit: _verificar,
-      ),
-
       footer: Column(
         children: [
           const SizedBox(height: 6),
-
-          // Reenviar
           TextButton(
             onPressed: _seconds == 0 ? _reenviar : null,
             style: TextButton.styleFrom(
@@ -122,17 +248,14 @@ class _TokenPageState extends State<TokenPage> {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: Text(
-              _seconds == 0 ? 'Reenviar código' : 'Reenviar en $_seconds s',
+              _seconds == 0 ? 'Reenviar codigo' : 'Reenviar en $_seconds s',
               style: t.bodySmall?.copyWith(
                 color: _seconds == 0 ? ColoresApp.vino : ColoresApp.textoSuave,
                 fontWeight: FontWeight.w800,
               ),
             ),
           ),
-
           const SizedBox(height: 2),
-
-          // Volver a login
           TextButton(
             onPressed: () => context.go('/login'),
             style: TextButton.styleFrom(
@@ -140,7 +263,7 @@ class _TokenPageState extends State<TokenPage> {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: Text(
-              'Volver a iniciar sesión',
+              'Volver a iniciar sesion',
               style: t.bodySmall?.copyWith(
                 color: ColoresApp.texto,
                 fontWeight: FontWeight.w700,
@@ -148,6 +271,11 @@ class _TokenPageState extends State<TokenPage> {
             ),
           ),
         ],
+      ),
+      child: TokenForm(
+        formKey: _formKey,
+        codeCtrl: _codeCtrl,
+        onSubmit: _verificar,
       ),
     );
   }

@@ -1,5 +1,8 @@
 import '../../domain/entities/login_result.dart';
 
+/// DTO de response = lectura cruda de la respuesta del backend.
+///
+/// Despues se transforma a LoginResult, que es el objeto que usa la app.
 class LoginResponseDto {
   const LoginResponseDto({
     required this.username,

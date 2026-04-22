@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../features/auth/application/auth_providers.dart';
+import '../../../../../features/auth/application/auth_state.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/nueva_contrasena_form.dart';
 
-class NuevaContrasenaPage extends StatefulWidget {
-  final String email;
-  final String token;
-
-  // por si quieres controlar el back según el flujo
-  final String backRoute;
-
+class NuevaContrasenaPage extends ConsumerStatefulWidget {
   const NuevaContrasenaPage({
     super.key,
     required this.email,
@@ -18,11 +15,16 @@ class NuevaContrasenaPage extends StatefulWidget {
     this.backRoute = '/token',
   });
 
+  final String email;
+  final String token;
+  final String backRoute;
+
   @override
-  State<NuevaContrasenaPage> createState() => _NuevaContrasenaPageState();
+  ConsumerState<NuevaContrasenaPage> createState() =>
+      _NuevaContrasenaPageState();
 }
 
-class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
+class _NuevaContrasenaPageState extends ConsumerState<NuevaContrasenaPage> {
   final _formKey = GlobalKey<FormState>();
   final _passCtrl = TextEditingController();
   final _pass2Ctrl = TextEditingController();
@@ -38,49 +40,67 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) return;
 
-    final pass = _passCtrl.text.trim();
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .resetPassword(
+          email: widget.email.trim(),
+          otp: widget.token.trim(),
+          newPassword: _passCtrl.text.trim(),
+        );
 
-    // ✅ datos ya vienen por constructor (mejor)
-    final email = widget.email.trim();
-    final token = widget.token.trim();
+    if (result == null || !mounted) {
+      return;
+    }
 
-    debugPrint('NUEVA PASSWORD -> email: $email, token: $token, pass: $pass');
-
-    // TODO: API real -> reset password
-    // await authService.resetPassword(email: email, token: token, newPassword: pass);
-
-    // ✅ al terminar, login
+    final message = result.message.trim().isEmpty
+        ? 'Contrasena actualizada correctamente. Inicia sesion de nuevo.'
+        : result.message.trim();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
     context.go('/login');
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authControllerProvider, (previous, next) {
+      if (!mounted) return;
+
+      final previousError = previous?.errorMessage;
+      final nextError = next.errorMessage;
+      if (nextError != null && nextError != previousError) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(nextError)));
+        ref.read(authControllerProvider.notifier).clearFeedback();
+      }
+    });
+
+    final authState = ref.watch(authControllerProvider);
+
     return AuthShell(
       backgroundAsset: 'assets/img/fondo.png',
       overlayOpacity: 0.10,
-
       showBack: true,
       onBack: () => context.go(widget.backRoute),
       fallbackBackRoute: widget.backRoute,
-
-      titulo: 'Crea tu nueva contraseña',
+      titulo: 'Crea tu nueva contrasena',
       subtitulo:
-          'Escribe una contraseña nueva y confírmala\npara recuperar tu acceso.',
-
-      primaryText: 'Cambiar contraseña',
+          'Escribe una contrasena nueva y confirmala\npara recuperar tu acceso.',
+      primaryText: 'Cambiar contrasena',
       onPrimary: _cambiar,
-
+      primaryLoading: authState.isLoading,
+      footer: Text(
+        'Al finalizar volveras al inicio de sesion.',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
       child: NuevaContrasenaForm(
         formKey: _formKey,
         passCtrl: _passCtrl,
         pass2Ctrl: _pass2Ctrl,
         onSubmit: _cambiar,
-      ),
-
-      footer: Text(
-        'Al finalizar volverás al inicio de sesión.',
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodySmall,
       ),
     );
   }
