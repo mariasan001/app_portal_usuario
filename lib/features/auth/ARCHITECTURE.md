@@ -123,7 +123,7 @@ Ejemplos:
 ```bash
 flutter run --dart-define=APP_FLAVOR=dev
 flutter run --dart-define=APP_FLAVOR=qa --dart-define=IAM_BASE_URL_QA=https://qa.mi-backend.com/iam
-flutter run --dart-define=IAM_BASE_URL=http://10.0.32.46:8081/iam --dart-define=IAM_APP_CODE=PLAT_SERV
+flutter run --dart-define=IAM_BASE_URL=http://10.0.32.64:8081/iam --dart-define=IAM_APP_CODE=PLAT_SERV
 ```
 
 ## Nota importante

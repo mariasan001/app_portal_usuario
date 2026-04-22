@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../core/ui/notificaciones/app_notifications.dart';
 import '../../../../../features/auth/application/auth_providers.dart';
 import '../../../../../features/auth/application/auth_state.dart';
 import '../widgets/auth_shell.dart';
@@ -55,9 +56,7 @@ class _NuevaContrasenaPageState extends ConsumerState<NuevaContrasenaPage> {
     final message = result.message.trim().isEmpty
         ? 'Contrasena actualizada correctamente. Inicia sesion de nuevo.'
         : result.message.trim();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppNotifications.show(context, AppNotifications.authSuccess(message));
     context.go('/login');
   }
 
@@ -69,10 +68,7 @@ class _NuevaContrasenaPageState extends ConsumerState<NuevaContrasenaPage> {
       final previousError = previous?.errorMessage;
       final nextError = next.errorMessage;
       if (nextError != null && nextError != previousError) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(nextError)));
+        AppNotifications.show(context, AppNotifications.authError(nextError));
         ref.read(authControllerProvider.notifier).clearFeedback();
       }
     });

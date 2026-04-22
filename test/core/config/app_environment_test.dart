@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:portal_servicios_usuario/core/config/app_environment.dart';
+import 'package:portal_servicios_usuario/core/utils/localhost_resolver.dart';
 
 void main() {
   group('appFlavorFromName', () {
@@ -61,6 +62,22 @@ void main() {
           prodBaseUrl: 'https://prod.local/iam',
         ),
         'https://prod.local/iam',
+      );
+    });
+  });
+
+  group('resolveLocalhostUrl', () {
+    test('no modifica una IP real de red para pruebas en celular fisico', () {
+      expect(
+        resolveLocalhostUrl('http://10.0.32.64:8081/iam'),
+        'http://10.0.32.64:8081/iam',
+      );
+    });
+
+    test('no modifica un dominio remoto', () {
+      expect(
+        resolveLocalhostUrl('https://qa.portal-servicios.local/iam'),
+        'https://qa.portal-servicios.local/iam',
       );
     });
   });

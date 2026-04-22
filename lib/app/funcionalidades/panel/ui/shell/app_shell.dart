@@ -11,6 +11,7 @@ import 'package:portal_servicios_usuario/app/funcionalidades/servicios/ui/widget
 // ✅ NUEVO: notificaciones
 import 'package:portal_servicios_usuario/app/funcionalidades/notificaciones/ui/widgets/notificaciones_sheet.dart';
 
+import 'package:portal_servicios_usuario/core/ui/notificaciones/app_notifications.dart';
 import 'package:portal_servicios_usuario/app/tema/colores.dart';
 import 'package:portal_servicios_usuario/features/auth/application/auth_providers.dart';
 
@@ -76,10 +77,7 @@ class AppShell extends ConsumerWidget {
       return;
     }
 
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sesion cerrada correctamente.')),
-    );
+    AppNotifications.show(context, AppNotifications.logoutSuccess());
     context.go('/login');
   }
 
@@ -166,9 +164,10 @@ class AppShell extends ConsumerWidget {
               return;
             }
 
-            ScaffoldMessenger.of(
+            AppNotifications.show(
               context,
-            ).showSnackBar(SnackBar(content: Text('Abrir: ${item.titulo}')));
+              AppNotifications.openItem(item.titulo),
+            );
           },
         );
       },
@@ -178,9 +177,7 @@ class AppShell extends ConsumerWidget {
   // ✅ FUTURO: aquí irá DocumentosSearchSheet (paso 2)
   void _openDocumentosSearch(BuildContext context) {
     // siguiente paso: showModalBottomSheet con DocumentosSearchSheet(...)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Buscador de documentos (pendiente)')),
-    );
+    AppNotifications.show(context, AppNotifications.documentsSearchPending());
   }
 
   // ✅ Notificaciones PRO
@@ -200,8 +197,9 @@ class AppShell extends ConsumerWidget {
         items: items,
         onMarkAllRead: () {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Marcadas como leídas (demo)')),
+          AppNotifications.show(
+            context,
+            AppNotifications.notificationsMarkedAsRead(),
           );
         },
         onOpen: (item) {
@@ -213,9 +211,10 @@ class AppShell extends ConsumerWidget {
             return;
           }
 
-          ScaffoldMessenger.of(
+          AppNotifications.show(
             context,
-          ).showSnackBar(SnackBar(content: Text('Abrir: ${item.titulo}')));
+            AppNotifications.openItem(item.titulo),
+          );
         },
       ),
     );

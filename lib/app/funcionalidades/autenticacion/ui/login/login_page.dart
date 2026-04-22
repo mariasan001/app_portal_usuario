@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../features/auth/application/auth_providers.dart';
 import '../../../../../features/auth/application/auth_state.dart';
+import '../../../../../core/ui/notificaciones/app_notifications.dart';
 import '../../../../tema/colores.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/login_form.dart';
@@ -54,13 +55,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
       final enrollmentId = (result.enrollmentId ?? '').trim();
       if (enrollmentId.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'La API no devolvio enrollmentId para continuar el enrolamiento.',
-            ),
-          ),
-        );
+        AppNotifications.show(context, AppNotifications.missingEnrollmentId());
         return;
       }
 
@@ -79,9 +74,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       final message =
           ref.read(authControllerProvider).errorMessage ??
           'No se pudo iniciar el enrolamiento del dispositivo.';
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      AppNotifications.show(context, AppNotifications.authError(message));
     } finally {
       if (mounted) {
         setState(() => _startingEnrollment = false);
@@ -99,10 +92,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       final previousError = previous?.errorMessage;
       final nextError = next.errorMessage;
       if (nextError != null && nextError != previousError) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(nextError)));
+        AppNotifications.show(context, AppNotifications.authError(nextError));
         ref.read(authControllerProvider.notifier).clearFeedback();
       }
 

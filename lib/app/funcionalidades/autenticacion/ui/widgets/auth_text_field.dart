@@ -61,18 +61,19 @@ class _AuthTextFieldState extends State<AuthTextField> {
           ),
           const SizedBox(height: 6),
         ],
-        SizedBox(
-          height: 62,
-          child: FormField<String>(
-            initialValue: widget.controller.text,
-            validator: (widget.validator == null)
-                ? null
-                : (_) => widget.validator!(widget.controller.text),
-            builder: (state) {
-              final hasError = state.hasError;
-              final errorText = state.errorText;
+        FormField<String>(
+          initialValue: widget.controller.text,
+          validator: (widget.validator == null)
+              ? null
+              : (_) => widget.validator!(widget.controller.text),
+          builder: (state) {
+            final hasError = state.hasError;
+            final errorText = state.errorText;
 
-              return Column(
+            return AnimatedSize(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
@@ -148,25 +149,65 @@ class _AuthTextFieldState extends State<AuthTextField> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  AnimatedOpacity(
-                    opacity: hasError ? 1 : 0,
-                    duration: const Duration(milliseconds: 160),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
                     child: hasError
-                        ? Text(
-                            errorText ?? '',
-                            style: t.bodySmall?.copyWith(
-                              color: ColoresApp.vino.withValues(alpha: 0.85),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 11.5,
+                        ? Padding(
+                            key: const ValueKey('auth-field-error'),
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: ColoresApp.vino.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: ColoresApp.vino.withValues(
+                                    alpha: 0.16,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline_rounded,
+                                    size: 15,
+                                    color: ColoresApp.vino.withValues(
+                                      alpha: 0.85,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      errorText ?? '',
+                                      style: t.bodySmall?.copyWith(
+                                        color: ColoresApp.vino.withValues(
+                                          alpha: 0.9,
+                                        ),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 11.6,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           )
-                        : const SizedBox(height: 14),
+                        : const SizedBox.shrink(
+                            key: ValueKey('auth-field-no-error'),
+                          ),
                   ),
                 ],
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ],
     );

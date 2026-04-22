@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../core/ui/notificaciones/app_notifications.dart';
 import '../../../../../features/auth/application/auth_providers.dart';
 import '../../../../tema/colores.dart';
 import '../widgets/auth_shell.dart';
@@ -78,10 +79,9 @@ class _TokenPageState extends ConsumerState<TokenPage> {
 
     if (_isDeviceEnrollmentFlow) {
       if (_enrollmentId.trim().isEmpty || widget.username.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Falta informacion para confirmar el dispositivo.'),
-          ),
+        AppNotifications.show(
+          context,
+          AppNotifications.missingDeviceEnrollmentData(),
         );
         return;
       }
@@ -99,18 +99,14 @@ class _TokenPageState extends ConsumerState<TokenPage> {
         final message = result.message.trim().isEmpty
             ? 'Dispositivo enrolado correctamente. Ahora inicia sesion.'
             : result.message.trim();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        AppNotifications.show(context, AppNotifications.authSuccess(message));
         context.go('/login');
       } catch (_) {
         if (!mounted) return;
         final message =
             ref.read(authControllerProvider).errorMessage ??
             'No se pudo confirmar el enrolamiento del dispositivo.';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        AppNotifications.show(context, AppNotifications.authError(message));
       }
       return;
     }
@@ -143,28 +139,20 @@ class _TokenPageState extends ConsumerState<TokenPage> {
         final message = result.message.trim().isEmpty
             ? 'Se envio un nuevo codigo para enrolar tu dispositivo.'
             : result.message.trim();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        AppNotifications.show(context, AppNotifications.info(message));
       } catch (_) {
         if (!mounted) return;
         final message =
             ref.read(authControllerProvider).errorMessage ??
             'No se pudo reenviar el codigo del enrolamiento.';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        AppNotifications.show(context, AppNotifications.authError(message));
       }
     }
 
     if (!_isDeviceEnrollmentFlow) {
       final email = (widget.email ?? '').trim();
       if (email.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Falta el correo para reenviar el codigo.'),
-          ),
-        );
+        AppNotifications.show(context, AppNotifications.missingRecoveryEmail());
         return;
       }
 
@@ -177,18 +165,14 @@ class _TokenPageState extends ConsumerState<TokenPage> {
         final message =
             ref.read(authControllerProvider).errorMessage ??
             'No se pudo reenviar el codigo de recuperacion.';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        AppNotifications.show(context, AppNotifications.authError(message));
         return;
       }
 
       final message = result.message.trim().isEmpty
           ? 'Te enviamos un nuevo codigo de recuperacion.'
           : result.message.trim();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      AppNotifications.show(context, AppNotifications.info(message));
     }
 
     _startTimer();

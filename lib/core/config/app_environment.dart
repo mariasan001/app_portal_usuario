@@ -50,7 +50,7 @@ abstract final class AppEnvironment {
 
   static const _iamBaseUrlDev = String.fromEnvironment(
     'IAM_BASE_URL_DEV',
-    defaultValue: 'http://10.0.32.46:8081/iam',
+    defaultValue: 'http://10.0.32.64:8081/iam',
   );
 
   static const _iamBaseUrlQa = String.fromEnvironment(

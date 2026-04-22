@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../core/ui/notificaciones/app_notifications.dart';
 import '../../../../../features/auth/application/auth_providers.dart';
 import '../../../../../features/auth/application/auth_state.dart';
 import '../../../../tema/colores.dart';
@@ -56,9 +57,7 @@ class _RegistroPageState extends ConsumerState<RegistroPage> {
         ? 'Registro completado. Ahora puedes iniciar sesion.'
         : result.message.trim();
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppNotifications.show(context, AppNotifications.authSuccess(message));
     context.go('/login');
   }
 
@@ -70,10 +69,7 @@ class _RegistroPageState extends ConsumerState<RegistroPage> {
       final previousError = previous?.errorMessage;
       final nextError = next.errorMessage;
       if (nextError != null && nextError != previousError) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(nextError)));
+        AppNotifications.show(context, AppNotifications.authError(nextError));
         ref.read(authControllerProvider.notifier).clearFeedback();
       }
     });

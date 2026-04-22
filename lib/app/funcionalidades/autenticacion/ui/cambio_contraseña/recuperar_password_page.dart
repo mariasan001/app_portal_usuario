@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../core/ui/notificaciones/app_notifications.dart';
 import '../../../../../features/auth/application/auth_providers.dart';
 import '../../../../../features/auth/application/auth_state.dart';
 import '../widgets/auth_shell.dart';
@@ -41,9 +42,7 @@ class _RecuperarPasswordPageState extends ConsumerState<RecuperarPasswordPage> {
     final message = result.message.trim().isEmpty
         ? 'Te enviamos un codigo de recuperacion.'
         : result.message.trim();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppNotifications.show(context, AppNotifications.authSuccess(message));
 
     context.go(
       '/token',
@@ -64,10 +63,7 @@ class _RecuperarPasswordPageState extends ConsumerState<RecuperarPasswordPage> {
       final previousError = previous?.errorMessage;
       final nextError = next.errorMessage;
       if (nextError != null && nextError != previousError) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(nextError)));
+        AppNotifications.show(context, AppNotifications.authError(nextError));
         ref.read(authControllerProvider.notifier).clearFeedback();
       }
     });
