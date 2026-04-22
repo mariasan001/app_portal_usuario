@@ -2,22 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contrase%C3%B1a/nueva_contrasena_page.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contrase%C3%B1a/recuperar_password_page.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/login/login_page.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/token/token_page.dart';
 import 'package:portal_servicios_usuario/core/device/device_metadata_collector.dart';
 import 'package:portal_servicios_usuario/core/device/models/app_device_info.dart';
 import 'package:portal_servicios_usuario/core/network/api_exception.dart';
 import 'package:portal_servicios_usuario/features/auth/application/auth_providers.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/auth_action_result.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/auth_user.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/device_check_result.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/device_enrollment_confirm_result.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/device_enrollment_request_result.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/login_result.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/register_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/device/device_check_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/device/device_enrollment_confirm_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/device/device_enrollment_request_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/recovery/auth_action_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/session/auth_user.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/session/login_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/session/register_result.dart';
 import 'package:portal_servicios_usuario/features/auth/domain/repositories/auth_repository.dart';
+import 'package:portal_servicios_usuario/features/auth/ui/pages/login_page.dart';
+import 'package:portal_servicios_usuario/features/auth/ui/pages/nueva_contrasena_page.dart';
+import 'package:portal_servicios_usuario/features/auth/ui/pages/recuperar_password_page.dart';
+import 'package:portal_servicios_usuario/features/auth/ui/pages/token_page.dart';
 
 void main() {
   group('Auth widget flows', () {
@@ -142,14 +142,8 @@ void main() {
         repository: repository,
       );
 
-      await tester.enterText(
-        find.byType(TextFormField).at(0),
-        'NuevaPass#2026',
-      );
-      await tester.enterText(
-        find.byType(TextFormField).at(1),
-        'NuevaPass#2026',
-      );
+      await tester.enterText(find.byType(TextField).at(0), 'NuevaPass#2026');
+      await tester.enterText(find.byType(TextField).at(1), 'NuevaPass#2026');
       await tester.tap(find.text('Cambiar contrasena'));
       await tester.pump();
       await tester.pumpAndSettle();
@@ -173,14 +167,8 @@ void main() {
         repository: repository,
       );
 
-      await tester.enterText(
-        find.byType(TextFormField).at(0),
-        'NuevaPass#2026',
-      );
-      await tester.enterText(
-        find.byType(TextFormField).at(1),
-        'NuevaPass#2026',
-      );
+      await tester.enterText(find.byType(TextField).at(0), 'NuevaPass#2026');
+      await tester.enterText(find.byType(TextField).at(1), 'NuevaPass#2026');
       await tester.tap(find.text('Cambiar contrasena'));
       await tester.pump();
       await tester.pumpAndSettle();
@@ -253,14 +241,8 @@ void main() {
 
         expect(find.text('Crea tu nueva contrasena'), findsOneWidget);
 
-        await tester.enterText(
-          find.byType(TextFormField).at(0),
-          'NuevaPass#2026',
-        );
-        await tester.enterText(
-          find.byType(TextFormField).at(1),
-          'NuevaPass#2026',
-        );
+        await tester.enterText(find.byType(TextField).at(0), 'NuevaPass#2026');
+        await tester.enterText(find.byType(TextField).at(1), 'NuevaPass#2026');
         await tester.tap(find.text('Cambiar contrasena'));
         await tester.pump();
         await tester.pumpAndSettle();

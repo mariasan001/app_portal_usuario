@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:portal_servicios_usuario/app/enrutador/auth_redirect.dart';
 import 'package:portal_servicios_usuario/features/auth/application/auth_state.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/auth_user.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/session/auth_user.dart';
 
 void main() {
   group('redirectForAuth', () {

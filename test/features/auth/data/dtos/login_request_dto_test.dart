@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:portal_servicios_usuario/core/config/app_environment.dart';
-import 'package:portal_servicios_usuario/features/auth/data/dtos/login_request_dto.dart';
+import 'package:portal_servicios_usuario/features/auth/data/dtos/session/login_request_dto.dart';
 
 void main() {
   group('LoginRequestDto', () {

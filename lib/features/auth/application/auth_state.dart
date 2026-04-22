@@ -1,5 +1,5 @@
-import '../domain/entities/auth_user.dart';
-import '../domain/entities/device_check_result.dart';
+import '../domain/entities/device/device_check_result.dart';
+import '../domain/entities/session/auth_user.dart';
 
 /// Estado observable del modulo de autenticacion.
 ///

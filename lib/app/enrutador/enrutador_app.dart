@@ -3,11 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:portal_servicios_usuario/app/funcionalidades/ayuda/ayuda_page.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contrase%C3%B1a/nueva_contrasena_page.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/cambio_contrase%C3%B1a/recuperar_password_page.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/login/login_page.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/registro/registro_page.dart';
-import 'package:portal_servicios_usuario/app/funcionalidades/autenticacion/ui/token/token_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/documentos/ui/pages/documento_detalle_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/documentos/ui/pages/documentos_page.dart';
 import 'package:portal_servicios_usuario/app/funcionalidades/home/ui/inicio_tab.dart';
@@ -20,6 +15,11 @@ import 'package:portal_servicios_usuario/app/funcionalidades/perfil/ui/perfil_pa
 import 'package:portal_servicios_usuario/app/funcionalidades/servicios/ui/widgets/servicio_proceso_page.dart';
 import 'package:portal_servicios_usuario/features/auth/application/auth_providers.dart';
 import 'package:portal_servicios_usuario/features/auth/application/auth_state.dart';
+import 'package:portal_servicios_usuario/features/auth/ui/pages/login_page.dart';
+import 'package:portal_servicios_usuario/features/auth/ui/pages/nueva_contrasena_page.dart';
+import 'package:portal_servicios_usuario/features/auth/ui/pages/recuperar_password_page.dart';
+import 'package:portal_servicios_usuario/features/auth/ui/pages/registro_page.dart';
+import 'package:portal_servicios_usuario/features/auth/ui/pages/token_page.dart';
 
 import 'auth_redirect.dart';
 

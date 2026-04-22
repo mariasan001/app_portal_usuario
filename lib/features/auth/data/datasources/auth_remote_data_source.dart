@@ -1,20 +1,20 @@
 import '../../../../core/config/app_endpoints.dart';
 import '../../../../core/device/models/app_device_info.dart';
 import '../../../../core/network/api_client.dart';
-import '../dtos/auth_action_response_dto.dart';
-import '../dtos/auth_user_dto.dart';
-import '../dtos/device_check_request_dto.dart';
-import '../dtos/device_check_response_dto.dart';
-import '../dtos/device_enrollment_confirm_request_dto.dart';
-import '../dtos/device_enrollment_confirm_response_dto.dart';
-import '../dtos/device_enrollment_request_request_dto.dart';
-import '../dtos/device_enrollment_request_response_dto.dart';
-import '../dtos/forgot_password_request_dto.dart';
-import '../dtos/login_request_dto.dart';
-import '../dtos/login_response_dto.dart';
-import '../dtos/register_request_dto.dart';
-import '../dtos/register_response_dto.dart';
-import '../dtos/reset_password_request_dto.dart';
+import '../dtos/device/device_check_request_dto.dart';
+import '../dtos/device/device_check_response_dto.dart';
+import '../dtos/device/device_enrollment_confirm_request_dto.dart';
+import '../dtos/device/device_enrollment_confirm_response_dto.dart';
+import '../dtos/device/device_enrollment_request_request_dto.dart';
+import '../dtos/device/device_enrollment_request_response_dto.dart';
+import '../dtos/recovery/auth_action_response_dto.dart';
+import '../dtos/recovery/forgot_password_request_dto.dart';
+import '../dtos/recovery/reset_password_request_dto.dart';
+import '../dtos/session/auth_user_dto.dart';
+import '../dtos/session/login_request_dto.dart';
+import '../dtos/session/login_response_dto.dart';
+import '../dtos/session/register_request_dto.dart';
+import '../dtos/session/register_response_dto.dart';
 
 /// DataSource = capa que SI habla HTTP.
 ///

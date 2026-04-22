@@ -35,12 +35,19 @@ Es la parte mas cercana al negocio.
 - `entities/`
   - objetos limpios que usa la app
   - no deberian depender de JSON ni de Dio
+  - ahora estan agrupadas por tema:
+    - `session/`
+    - `recovery/`
+    - `device/`
 - `repositories/`
   - contratos que el dominio necesita
   - ejemplo: `AuthRepository`
 - `usecases/`
   - acciones puntuales del negocio
-  - ejemplo: `LoginUseCase`, `ForgotPasswordUseCase`
+  - ahora tambien estan agrupadas por tema:
+    - `session/`
+    - `recovery/`
+    - `device/`
 
 ### `data/`
 
@@ -52,9 +59,35 @@ Es la capa que aterriza la comunicacion real con backend.
 - `dtos/`
   - objetos de transferencia para request/response
   - representan el formato exacto que envia o recibe la API
+  - ahora estan agrupados por tema:
+    - `session/`
+    - `recovery/`
+    - `device/`
 - `repositories/`
   - implementan los contratos del dominio
   - convierten DTOs a entidades/resultados
+
+### `ui/`
+
+Aqui vive todo lo que pinta, navega o ayuda a presentar el flujo al usuario.
+
+- `pages/`
+  - pantallas contenedoras
+  - escuchan estado y coordinan navegacion
+- `forms/`
+  - agrupan campos y validaciones visuales
+  - ayudan a que las `pages` no se inflen
+- `widgets/`
+  - piezas reutilizables de presentacion
+  - ejemplo: `AuthShell`, `AuthTextField`, `AuthPrimaryButton`
+- `helpers/`
+  - funciones pequenas para feedback y armado de rutas
+  - evitan repetir la misma logica visual entre pantallas
+- `styles/`
+  - tokens de espaciado y detalles de presentacion compartidos
+- `auth_copy.dart`
+  - concentra el texto visible del flujo auth
+  - evita dejar mensajes regados por muchas pantallas
 
 ## Por que no llamar la API desde la UI
 
@@ -76,6 +109,31 @@ Con esta estructura, si cambia la API normalmente ajustamos `dto`,
 - Si ves `Repository`: piensa "puente entre negocio y datos"
 - Si ves `DataSource`: piensa "llamada real a la API"
 - Si ves `Controller`: piensa "director del flujo"
+- Si ves `Page`: piensa "pantalla que coordina"
+- Si ves `Form`: piensa "campos y validacion visual"
+- Si ves `Helper`: piensa "logica pequena de apoyo para UI"
+- Si ves `Copy`: piensa "texto humano para el usuario"
+
+## Como esta agrupado auth hoy
+
+El modulo ya no esta solo por capas; dentro de `data` y `domain` tambien esta
+ordenado por responsabilidad.
+
+- `session/`
+  - login
+  - registro
+  - usuario actual
+  - cierre de sesion local
+- `recovery/`
+  - envio de codigo
+  - cambio de contrasena
+- `device/`
+  - validacion del dispositivo
+  - solicitud de verificacion
+  - confirmacion del dispositivo
+
+Esto ayuda a que cuando auth crezca no termines buscando entre muchos archivos
+mezclados en una sola carpeta plana.
 
 ## Ejemplo con login
 

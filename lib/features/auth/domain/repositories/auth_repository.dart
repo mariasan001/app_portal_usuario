@@ -1,11 +1,11 @@
 import '../../../../core/device/models/app_device_info.dart';
-import '../entities/auth_action_result.dart';
-import '../entities/auth_user.dart';
-import '../entities/device_check_result.dart';
-import '../entities/device_enrollment_confirm_result.dart';
-import '../entities/device_enrollment_request_result.dart';
-import '../entities/login_result.dart';
-import '../entities/register_result.dart';
+import '../entities/device/device_check_result.dart';
+import '../entities/device/device_enrollment_confirm_result.dart';
+import '../entities/device/device_enrollment_request_result.dart';
+import '../entities/recovery/auth_action_result.dart';
+import '../entities/session/auth_user.dart';
+import '../entities/session/login_result.dart';
+import '../entities/session/register_result.dart';
 
 /// Repository = frontera entre la capa de negocio y la capa de datos.
 ///

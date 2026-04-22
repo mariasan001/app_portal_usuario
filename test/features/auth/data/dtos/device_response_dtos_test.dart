@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:portal_servicios_usuario/features/auth/data/dtos/device_check_response_dto.dart';
-import 'package:portal_servicios_usuario/features/auth/data/dtos/device_enrollment_request_response_dto.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/device_check_result.dart';
+import 'package:portal_servicios_usuario/features/auth/data/dtos/device/device_check_response_dto.dart';
+import 'package:portal_servicios_usuario/features/auth/data/dtos/device/device_enrollment_request_response_dto.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/device/device_check_result.dart';
 
 void main() {
   group('DeviceCheckResponseDto', () {

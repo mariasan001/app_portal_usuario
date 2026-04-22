@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:portal_servicios_usuario/core/device/models/app_device_info.dart';
 import 'package:portal_servicios_usuario/features/auth/data/datasources/auth_remote_data_source.dart';
-import 'package:portal_servicios_usuario/features/auth/data/dtos/auth_action_response_dto.dart';
-import 'package:portal_servicios_usuario/features/auth/data/dtos/auth_user_dto.dart';
-import 'package:portal_servicios_usuario/features/auth/data/dtos/device_check_response_dto.dart';
-import 'package:portal_servicios_usuario/features/auth/data/dtos/device_enrollment_confirm_response_dto.dart';
-import 'package:portal_servicios_usuario/features/auth/data/dtos/device_enrollment_request_response_dto.dart';
-import 'package:portal_servicios_usuario/features/auth/data/dtos/login_response_dto.dart';
-import 'package:portal_servicios_usuario/features/auth/data/dtos/register_response_dto.dart';
+import 'package:portal_servicios_usuario/features/auth/data/dtos/device/device_check_response_dto.dart';
+import 'package:portal_servicios_usuario/features/auth/data/dtos/device/device_enrollment_confirm_response_dto.dart';
+import 'package:portal_servicios_usuario/features/auth/data/dtos/device/device_enrollment_request_response_dto.dart';
+import 'package:portal_servicios_usuario/features/auth/data/dtos/recovery/auth_action_response_dto.dart';
+import 'package:portal_servicios_usuario/features/auth/data/dtos/session/auth_user_dto.dart';
+import 'package:portal_servicios_usuario/features/auth/data/dtos/session/login_response_dto.dart';
+import 'package:portal_servicios_usuario/features/auth/data/dtos/session/register_response_dto.dart';
 import 'package:portal_servicios_usuario/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:portal_servicios_usuario/features/auth/domain/entities/device_check_result.dart';
+import 'package:portal_servicios_usuario/features/auth/domain/entities/device/device_check_result.dart';
 
 void main() {
   group('AuthRepositoryImpl', () {

@@ -1,4 +1,4 @@
-import '../domain/entities/device_check_result.dart';
+import '../domain/entities/device/device_check_result.dart';
 
 abstract final class AuthCopy {
   static const loginWelcomeSubtitle =
