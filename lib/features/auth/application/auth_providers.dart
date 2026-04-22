@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/device/device_metadata_collector.dart';
 import '../../../core/device/providers/device_providers.dart';
 import '../../../core/network/providers/network_providers.dart';
 import '../data/datasources/auth_remote_data_source.dart';
@@ -67,9 +68,10 @@ final confirmDeviceEnrollmentUseCaseProvider =
       return ConfirmDeviceEnrollmentUseCase(ref.watch(authRepositoryProvider));
     });
 
-final deviceMetadataCollectorServiceProvider = Provider((ref) {
-  return ref.watch(deviceMetadataCollectorProvider);
-});
+final deviceMetadataCollectorServiceProvider =
+    Provider<DeviceMetadataCollector>((ref) {
+      return ref.watch(deviceMetadataCollectorProvider);
+    });
 
 final authControllerProvider = NotifierProvider<AuthController, AuthState>(
   AuthController.new,

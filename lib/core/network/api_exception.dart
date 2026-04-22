@@ -11,22 +11,22 @@ class ApiException implements Exception {
     final response = error.response;
     final statusCode = response?.statusCode;
     final message = switch (error.type) {
-      DioExceptionType.connectionTimeout => 'La conexión tardó demasiado.',
+      DioExceptionType.connectionTimeout => 'La conexion tardo demasiado.',
       DioExceptionType.sendTimeout =>
-        'No se pudo enviar la información a tiempo.',
+        'No se pudo enviar la informacion a tiempo.',
       DioExceptionType.receiveTimeout =>
-        'El servidor tardó demasiado en responder.',
+        'El servidor tardo demasiado en responder.',
       DioExceptionType.connectionError =>
-        'No fue posible conectar con el servidor.',
+        'No fue posible conectar con el servidor. Revisa tu red o la URL configurada.',
       DioExceptionType.cancel => 'La solicitud fue cancelada.',
       DioExceptionType.badCertificate =>
-        'El certificado del servidor no es válido.',
+        'El certificado del servidor no es valido.',
       DioExceptionType.badResponse => _extractMessage(
         response?.data,
         statusCode,
       ),
       DioExceptionType.unknown =>
-        'Ocurrió un error inesperado al comunicar con la API.',
+        'Ocurrio un error inesperado al comunicar con la API.',
     };
 
     return ApiException(
@@ -48,20 +48,36 @@ class ApiException implements Exception {
       return data.trim();
     }
 
+    if (statusCode == 400) {
+      return 'Los datos enviados no son validos.';
+    }
+
     if (statusCode == 401) {
-      return 'Tus credenciales no son válidas o tu sesión expiró.';
+      return 'Tus credenciales no son validas o tu sesion expiro.';
     }
 
     if (statusCode == 403) {
-      return 'No tienes permisos para realizar esta acción.';
+      return 'No tienes permisos para realizar esta accion.';
     }
 
     if (statusCode == 404) {
-      return 'No se encontró el recurso solicitado.';
+      return 'No se encontro el recurso solicitado.';
+    }
+
+    if (statusCode == 408) {
+      return 'La solicitud tardo demasiado. Intenta nuevamente.';
+    }
+
+    if (statusCode == 409) {
+      return 'El recurso ya existe o entro en conflicto con el estado actual.';
+    }
+
+    if (statusCode == 422) {
+      return 'Los datos enviados no pasaron la validacion del servidor.';
     }
 
     if (statusCode != null && statusCode >= 500) {
-      return 'El servidor presentó un problema. Intenta más tarde.';
+      return 'El servidor presento un problema. Intenta mas tarde.';
     }
 
     return 'No fue posible completar la solicitud.';
