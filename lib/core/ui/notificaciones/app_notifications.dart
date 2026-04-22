@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
+import '../../../features/auth/ui/auth_copy.dart';
+
 enum AppNotificationTone { success, error, info, warning }
 
 class AppNotificationMessage {
@@ -69,22 +71,21 @@ abstract final class AppNotifications {
   static AppNotificationMessage missingEnrollmentId() {
     return const AppNotificationMessage(
       tone: AppNotificationTone.error,
-      message:
-          'La API no devolvio enrollmentId para continuar el enrolamiento.',
+      message: AuthCopy.identitySetupMissing,
     );
   }
 
   static AppNotificationMessage missingDeviceEnrollmentData() {
     return const AppNotificationMessage(
       tone: AppNotificationTone.error,
-      message: 'Falta informacion para confirmar el dispositivo.',
+      message: AuthCopy.identityDataMissing,
     );
   }
 
   static AppNotificationMessage missingRecoveryEmail() {
     return const AppNotificationMessage(
       tone: AppNotificationTone.error,
-      message: 'Falta el correo para reenviar el codigo.',
+      message: AuthCopy.missingRecoveryEmail,
     );
   }
 

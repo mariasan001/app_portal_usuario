@@ -121,8 +121,12 @@ class _TokenFormState extends State<TokenForm> {
                       ],
                       validator: (v) {
                         final s = (v ?? '').trim();
-                        if (s.isEmpty) return 'Ingresa el codigo';
-                        if (s.length != _len) return 'Debe tener $_len digitos';
+                        if (s.isEmpty) {
+                          return 'Escribe el codigo de verificacion';
+                        }
+                        if (s.length != _len) {
+                          return 'El codigo debe tener $_len digitos';
+                        }
                         return null;
                       },
                       onChanged: (v) {
@@ -139,7 +143,7 @@ class _TokenFormState extends State<TokenForm> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Toca los cuadros para escribir el codigo.',
+            'Toca los cuadros para escribir tu codigo de verificacion.',
             textAlign: TextAlign.center,
             style: t.bodySmall?.copyWith(
               color: ColoresApp.textoSuave,

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/ui/notificaciones/app_notifications.dart';
 import '../../../../../features/auth/application/auth_providers.dart';
 import '../../../../../features/auth/application/auth_state.dart';
+import '../../../../../features/auth/ui/auth_copy.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/recuperar_password_form.dart';
 
@@ -39,10 +40,10 @@ class _RecuperarPasswordPageState extends ConsumerState<RecuperarPasswordPage> {
       return;
     }
 
-    final message = result.message.trim().isEmpty
-        ? 'Te enviamos un codigo de recuperacion.'
-        : result.message.trim();
-    AppNotifications.show(context, AppNotifications.authSuccess(message));
+    AppNotifications.show(
+      context,
+      AppNotifications.authSuccess(AuthCopy.recoveryCodeSent),
+    );
 
     context.go(
       '/token',
@@ -85,7 +86,7 @@ class _RecuperarPasswordPageState extends ConsumerState<RecuperarPasswordPage> {
       footer: TextButton(
         onPressed: () => context.go('/login'),
         child: Text(
-          'Volver a iniciar sesion',
+          AuthCopy.backToLogin,
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),

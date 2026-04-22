@@ -83,7 +83,7 @@ void main() {
     await tester.tap(find.text('Enviar codigo'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Verifica tu codigo'), findsOneWidget);
+    expect(find.text('Confirma tu codigo'), findsOneWidget);
 
     await tester.enterText(find.byType(TextFormField).first, '483921');
     await tester.pumpAndSettle();

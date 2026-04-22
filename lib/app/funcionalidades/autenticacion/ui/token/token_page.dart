@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../core/ui/notificaciones/app_notifications.dart';
 import '../../../../../features/auth/application/auth_providers.dart';
+import '../../../../../features/auth/ui/auth_copy.dart';
 import '../../../../tema/colores.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/token_form.dart';
@@ -87,7 +88,7 @@ class _TokenPageState extends ConsumerState<TokenPage> {
       }
 
       try {
-        final result = await ref
+        await ref
             .read(authControllerProvider.notifier)
             .confirmDeviceEnrollment(
               enrollmentId: _enrollmentId,
@@ -96,16 +97,16 @@ class _TokenPageState extends ConsumerState<TokenPage> {
             );
 
         if (!mounted) return;
-        final message = result.message.trim().isEmpty
-            ? 'Dispositivo enrolado correctamente. Ahora inicia sesion.'
-            : result.message.trim();
-        AppNotifications.show(context, AppNotifications.authSuccess(message));
+        AppNotifications.show(
+          context,
+          AppNotifications.authSuccess(AuthCopy.identityVerificationSuccess),
+        );
         context.go('/login');
       } catch (_) {
         if (!mounted) return;
         final message =
             ref.read(authControllerProvider).errorMessage ??
-            'No se pudo confirmar el enrolamiento del dispositivo.';
+            AuthCopy.identityVerificationFailed;
         AppNotifications.show(context, AppNotifications.authError(message));
       }
       return;
@@ -136,15 +137,15 @@ class _TokenPageState extends ConsumerState<TokenPage> {
           setState(() => _enrollmentId = enrollmentId);
         }
 
-        final message = result.message.trim().isEmpty
-            ? 'Se envio un nuevo codigo para enrolar tu dispositivo.'
-            : result.message.trim();
-        AppNotifications.show(context, AppNotifications.info(message));
+        AppNotifications.show(
+          context,
+          AppNotifications.info(AuthCopy.identityCodeResent),
+        );
       } catch (_) {
         if (!mounted) return;
         final message =
             ref.read(authControllerProvider).errorMessage ??
-            'No se pudo reenviar el codigo del enrolamiento.';
+            AuthCopy.identityVerificationStartFailed;
         AppNotifications.show(context, AppNotifications.authError(message));
       }
     }
@@ -164,15 +165,15 @@ class _TokenPageState extends ConsumerState<TokenPage> {
       if (result == null) {
         final message =
             ref.read(authControllerProvider).errorMessage ??
-            'No se pudo reenviar el codigo de recuperacion.';
+            AuthCopy.recoveryStartFailed;
         AppNotifications.show(context, AppNotifications.authError(message));
         return;
       }
 
-      final message = result.message.trim().isEmpty
-          ? 'Te enviamos un nuevo codigo de recuperacion.'
-          : result.message.trim();
-      AppNotifications.show(context, AppNotifications.info(message));
+      AppNotifications.show(
+        context,
+        AppNotifications.info(AuthCopy.recoveryCodeResent),
+      );
     }
 
     _startTimer();
@@ -185,10 +186,8 @@ class _TokenPageState extends ConsumerState<TokenPage> {
     final email = (widget.email ?? '').trim();
 
     final subtitle = _isDeviceEnrollmentFlow
-        ? 'Tu cuenta requiere validar este dispositivo.\nIngresa el codigo OTP para continuar.'
-        : (email.isNotEmpty
-              ? 'Enviamos un codigo de recuperacion a:\n$email'
-              : 'Enviamos un codigo de recuperacion.\nEscribelo para continuar.');
+        ? AuthCopy.deviceVerificationSubtitle
+        : AuthCopy.recoveryVerificationSubtitle(email);
 
     return AuthShell(
       backgroundAsset: 'assets/img/fondo.png',
@@ -198,12 +197,12 @@ class _TokenPageState extends ConsumerState<TokenPage> {
       onBack: () => context.go(widget.backRoute),
       fallbackBackRoute: widget.backRoute,
       titulo: _isDeviceEnrollmentFlow
-          ? 'Autoriza este dispositivo'
-          : 'Verifica tu codigo',
+          ? AuthCopy.deviceVerificationTitle
+          : AuthCopy.recoveryVerificationTitle,
       subtitulo: subtitle,
       primaryText: _isDeviceEnrollmentFlow
-          ? 'Confirmar dispositivo'
-          : 'Continuar',
+          ? AuthCopy.confirmIdentityAction
+          : AuthCopy.continueWithCode,
       onPrimary: _verificar,
       footer: Column(
         children: [
@@ -215,7 +214,9 @@ class _TokenPageState extends ConsumerState<TokenPage> {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: Text(
-              _seconds == 0 ? 'Reenviar codigo' : 'Reenviar en $_seconds s',
+              _seconds == 0
+                  ? AuthCopy.resendCode
+                  : AuthCopy.resendCodeIn(_seconds),
               style: t.bodySmall?.copyWith(
                 color: _seconds == 0 ? ColoresApp.vino : ColoresApp.textoSuave,
                 fontWeight: FontWeight.w800,
@@ -230,7 +231,7 @@ class _TokenPageState extends ConsumerState<TokenPage> {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: Text(
-              'Volver a iniciar sesion',
+              AuthCopy.backToLogin,
               style: t.bodySmall?.copyWith(
                 color: ColoresApp.texto,
                 fontWeight: FontWeight.w700,

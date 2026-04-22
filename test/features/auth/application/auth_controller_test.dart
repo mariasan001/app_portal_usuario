@@ -88,7 +88,10 @@ void main() {
 
         final state = container.read(authControllerProvider);
         expect(result?.ok, isTrue);
-        expect(state.infoMessage, 'OTP enviado al correo');
+        expect(
+          state.infoMessage,
+          'Te enviamos un codigo de verificacion a tu correo.',
+        );
       },
     );
 

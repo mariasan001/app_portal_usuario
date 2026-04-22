@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../features/auth/application/auth_providers.dart';
 import '../../../../../features/auth/application/auth_state.dart';
 import '../../../../../core/ui/notificaciones/app_notifications.dart';
+import '../../../../../features/auth/ui/auth_copy.dart';
 import '../../../../tema/colores.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/login_form.dart';
@@ -73,7 +74,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       if (!mounted) return;
       final message =
           ref.read(authControllerProvider).errorMessage ??
-          'No se pudo iniciar el enrolamiento del dispositivo.';
+          AuthCopy.identityVerificationStartFailed;
       AppNotifications.show(context, AppNotifications.authError(message));
     } finally {
       if (mounted) {
@@ -146,8 +147,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ],
       ),
       titulo: 'Bienvenido a tu espacio\ndigital',
-      subtitulo:
-          'Inicia sesion para acceder a tus recibos, movimientos\ny normativas vigentes.',
+      subtitulo: AuthCopy.loginWelcomeSubtitle,
       primaryText: 'Entrar a mi perfil',
       onPrimary: _login,
       footer: Column(

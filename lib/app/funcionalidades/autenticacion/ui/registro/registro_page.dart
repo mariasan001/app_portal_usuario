@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/ui/notificaciones/app_notifications.dart';
 import '../../../../../features/auth/application/auth_providers.dart';
 import '../../../../../features/auth/application/auth_state.dart';
+import '../../../../../features/auth/ui/auth_copy.dart';
 import '../../../../tema/colores.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/registro_form.dart';
@@ -53,11 +54,10 @@ class _RegistroPageState extends ConsumerState<RegistroPage> {
 
     if (result == null || !mounted) return;
 
-    final message = result.message.trim().isEmpty
-        ? 'Registro completado. Ahora puedes iniciar sesion.'
-        : result.message.trim();
-
-    AppNotifications.show(context, AppNotifications.authSuccess(message));
+    AppNotifications.show(
+      context,
+      AppNotifications.authSuccess(AuthCopy.registerSuccess),
+    );
     context.go('/login');
   }
 

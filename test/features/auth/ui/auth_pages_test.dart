@@ -245,7 +245,7 @@ void main() {
         await tester.pump();
         await tester.pumpAndSettle();
 
-        expect(find.text('Verifica tu codigo'), findsOneWidget);
+        expect(find.text('Confirma tu codigo'), findsOneWidget);
 
         await tester.enterText(find.byType(TextFormField).first, '483921');
         await tester.pump();

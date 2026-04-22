@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/ui/notificaciones/app_notifications.dart';
 import '../../../../../features/auth/application/auth_providers.dart';
 import '../../../../../features/auth/application/auth_state.dart';
+import '../../../../../features/auth/ui/auth_copy.dart';
 import '../widgets/auth_shell.dart';
 import 'widgets/nueva_contrasena_form.dart';
 
@@ -53,10 +54,10 @@ class _NuevaContrasenaPageState extends ConsumerState<NuevaContrasenaPage> {
       return;
     }
 
-    final message = result.message.trim().isEmpty
-        ? 'Contrasena actualizada correctamente. Inicia sesion de nuevo.'
-        : result.message.trim();
-    AppNotifications.show(context, AppNotifications.authSuccess(message));
+    AppNotifications.show(
+      context,
+      AppNotifications.authSuccess(AuthCopy.passwordResetSuccess),
+    );
     context.go('/login');
   }
 

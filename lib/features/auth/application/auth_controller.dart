@@ -7,6 +7,7 @@ import '../domain/entities/device_check_result.dart';
 import '../domain/entities/device_enrollment_confirm_result.dart';
 import '../domain/entities/device_enrollment_request_result.dart';
 import '../domain/entities/register_result.dart';
+import '../ui/auth_copy.dart';
 import 'auth_device_messages.dart';
 import 'auth_providers.dart';
 import 'auth_state.dart';
@@ -52,7 +53,7 @@ class AuthController extends Notifier<AuthState> {
     );
 
     try {
-      final result = await ref
+      await ref
           .read(loginUseCaseProvider)
           .call(username: username, password: password);
 
@@ -77,9 +78,7 @@ class AuthController extends Notifier<AuthState> {
 
       state = AuthState.authenticated(
         user,
-        infoMessage: result.message.isEmpty
-            ? defaultDeviceMessage(deviceCheck)
-            : result.message,
+        infoMessage: defaultDeviceMessage(deviceCheck),
       );
       return true;
     } on ApiException catch (error) {
@@ -89,7 +88,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (_) {
       await ref.read(clearSessionUseCaseProvider).call();
       state = const AuthState.unauthenticated(
-        errorMessage: 'No se pudo iniciar sesión. Intenta nuevamente.',
+        errorMessage: AuthCopy.loginUnexpectedError,
       );
       return false;
     } finally {
@@ -125,9 +124,7 @@ class AuthController extends Notifier<AuthState> {
 
       state = state.copyWith(
         isLoading: false,
-        infoMessage: result.message.isEmpty
-            ? 'Registro completado correctamente.'
-            : result.message,
+        infoMessage: AuthCopy.registerSuccess,
       );
       return result;
     } on ApiException catch (error) {
@@ -136,7 +133,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (_) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'No se pudo completar el registro.',
+        errorMessage: AuthCopy.registerFailed,
       );
       return null;
     }
@@ -156,9 +153,7 @@ class AuthController extends Notifier<AuthState> {
 
       state = state.copyWith(
         isLoading: false,
-        infoMessage: result.message.isEmpty
-            ? 'Te enviamos un codigo de recuperacion.'
-            : result.message,
+        infoMessage: AuthCopy.recoveryCodeSent,
       );
       return result;
     } on ApiException catch (error) {
@@ -167,7 +162,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (_) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'No se pudo iniciar la recuperacion de contrasena.',
+        errorMessage: AuthCopy.recoveryStartFailed,
       );
       return null;
     }
@@ -191,9 +186,7 @@ class AuthController extends Notifier<AuthState> {
 
       state = state.copyWith(
         isLoading: false,
-        infoMessage: result.message.isEmpty
-            ? 'Contrasena actualizada correctamente.'
-            : result.message,
+        infoMessage: AuthCopy.passwordResetSuccess,
       );
       return result;
     } on ApiException catch (error) {
@@ -202,7 +195,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (_) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'No se pudo restablecer la contrasena.',
+        errorMessage: AuthCopy.passwordResetFailed,
       );
       return null;
     }
@@ -245,9 +238,7 @@ class AuthController extends Notifier<AuthState> {
         isLoading: false,
         pendingUsername: username,
         pendingEnrollmentId: result.enrollmentId,
-        infoMessage: result.message.isEmpty
-            ? 'Se inició el enrolamiento del dispositivo.'
-            : result.message,
+        infoMessage: AuthCopy.identityVerificationStarted,
       );
       return result;
     } on ApiException catch (error) {
@@ -256,7 +247,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (_) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'No se pudo iniciar el enrolamiento del dispositivo.',
+        errorMessage: AuthCopy.identityVerificationStartFailed,
       );
       rethrow;
     }
@@ -280,9 +271,7 @@ class AuthController extends Notifier<AuthState> {
 
       state = state.copyWith(
         isLoading: false,
-        infoMessage: result.message.isEmpty
-            ? 'Dispositivo enrolado correctamente. Inicia sesión de nuevo.'
-            : result.message,
+        infoMessage: AuthCopy.identityVerificationSuccess,
         clearPendingEnrollmentId: true,
         clearDeviceCheckResult: true,
       );
@@ -293,7 +282,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (_) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'No se pudo confirmar el enrolamiento del dispositivo.',
+        errorMessage: AuthCopy.identityVerificationFailed,
       );
       rethrow;
     }
